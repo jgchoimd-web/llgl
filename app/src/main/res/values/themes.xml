@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window-level theme only; the visible UI is drawn by Compose. Dark background avoids a white flash at launch. -->
+    <style name="Theme.Llgl" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#040511</item>
+    </style>
+</resources>

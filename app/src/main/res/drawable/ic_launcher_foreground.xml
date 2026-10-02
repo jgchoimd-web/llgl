@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A glowing marble, kept inside the 66dp adaptive-icon safe zone (21..87). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- magenta glow ring -->
+    <path
+        android:fillColor="#66FF2DB4"
+        android:pathData="M54,54m-30,0a30,30 0 1,0 60,0a30,30 0 1,0 -60,0" />
+    <!-- marble body -->
+    <path
+        android:fillColor="#17C6FF"
+        android:pathData="M54,54m-24,0a24,24 0 1,0 48,0a24,24 0 1,0 -48,0" />
+    <!-- lower shading -->
+    <path
+        android:fillColor="#082B66"
+        android:pathData="M30,54a24,24 0 0,0 48,0a30,18 0 0,1 -48,0z" />
+    <!-- highlight -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M44,43m-6,0a6,6 0 1,0 12,0a6,6 0 1,0 -12,0" />
+</vector>
