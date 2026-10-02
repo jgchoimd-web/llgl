@@ -2,6 +2,6 @@
 <resources>
     <!-- Window-level theme only; the visible UI is drawn by Compose. -->
     <style name="Theme.Llgl" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">#F3FBEF</item>
+        <item name="android:windowBackground">#F4F6FA</item>
     </style>
 </resources>

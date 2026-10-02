@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.Llgl" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">#101511</item>
+        <item name="android:windowBackground">#0E1116</item>
     </style>
 </resources>

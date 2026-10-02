@@ -1,26 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Generated from PetSprites.WALK_A; the turtle sits inside the 66dp adaptive-icon safe zone. -->
+<!-- A rotary dial: plate, nine finger holes, the finger stop and the hub, inside the 66dp safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillColor="#2B7A3A"
-        android:pathData="M44,45.25h2.5v2.5h-2.5zM54,45.25h2.5v2.5h-2.5zM39,47.75h2.5v2.5h-2.5zM59,47.75h2.5v2.5h-2.5zM44,50.25h2.5v2.5h-2.5zM54,50.25h2.5v2.5h-2.5zM29,52.75h2.5v2.5h-2.5zM39,52.75h2.5v2.5h-2.5zM64,52.75h2.5v2.5h-2.5zM71.5,52.75h2.5v2.5h-2.5zM29,55.25h2.5v2.5h-2.5zM46.5,55.25h2.5v2.5h-2.5zM56.5,55.25h2.5v2.5h-2.5zM69,55.25h2.5v2.5h-2.5zM31.5,57.75h40v2.5h-40z" />
+        android:fillColor="#1C2A44"
+        android:pathData="M24,54a30,30 0 1,0 60,0a30,30 0 1,0 -60,0z" />
     <path
-        android:fillColor="#3FA34D"
-        android:pathData="M41.5,42.75h20v2.5h-20zM36.5,45.25h7.5v2.5h-7.5zM46.5,45.25h7.5v2.5h-7.5zM56.5,45.25h10v2.5h-10zM34,47.75h5v2.5h-5zM41.5,47.75h17.5v2.5h-17.5zM61.5,47.75h7.5v2.5h-7.5zM31.5,50.25h12.5v2.5h-12.5zM46.5,50.25h7.5v2.5h-7.5zM56.5,50.25h15v2.5h-15zM31.5,52.75h7.5v2.5h-7.5zM41.5,52.75h22.5v2.5h-22.5zM66.5,52.75h5v2.5h-5zM31.5,55.25h15v2.5h-15zM49,55.25h7.5v2.5h-7.5zM59,55.25h10v2.5h-10z" />
+        android:fillColor="#00000000"
+        android:strokeColor="#7CC4FF"
+        android:strokeWidth="3"
+        android:pathData="M24,54a30,30 0 1,0 60,0a30,30 0 1,0 -60,0z" />
     <path
-        android:fillColor="#72D672"
-        android:pathData="M41.5,40.25h17.5v2.5h-17.5zM36.5,42.75h5v2.5h-5zM61.5,42.75h5v2.5h-5zM34,45.25h2.5v2.5h-2.5zM66.5,45.25h2.5v2.5h-2.5zM31.5,47.75h2.5v2.5h-2.5zM69,47.75h2.5v2.5h-2.5z" />
+        android:fillColor="#E8ECF3"
+        android:pathData="M70.5,54a4.5,4.5 0 1,0 9,0a4.5,4.5 0 1,0 -9,0zM66.5,66.3a4.5,4.5 0 1,0 9,0a4.5,4.5 0 1,0 -9,0zM56,74a4.5,4.5 0 1,0 9,0a4.5,4.5 0 1,0 -9,0zM43,74a4.5,4.5 0 1,0 9,0a4.5,4.5 0 1,0 -9,0zM32.5,66.3a4.5,4.5 0 1,0 9,0a4.5,4.5 0 1,0 -9,0zM28.5,54a4.5,4.5 0 1,0 9,0a4.5,4.5 0 1,0 -9,0zM32.5,41.7a4.5,4.5 0 1,0 9,0a4.5,4.5 0 1,0 -9,0zM43,34a4.5,4.5 0 1,0 9,0a4.5,4.5 0 1,0 -9,0zM56,34a4.5,4.5 0 1,0 9,0a4.5,4.5 0 1,0 -9,0z" />
     <path
-        android:fillColor="#8CC04B"
-        android:pathData="M26.5,60.25h5v2.5h-5zM34,60.25h10v2.5h-10zM59,60.25h10v2.5h-10zM76.5,60.25h5v2.5h-5zM29,62.75h2.5v2.5h-2.5zM34,62.75h10v2.5h-10zM59,62.75h10v2.5h-10zM74,62.75h5v2.5h-5zM34,65.25h7.5v2.5h-7.5zM61.5,65.25h7.5v2.5h-7.5z" />
+        android:fillColor="#7CC4FF"
+        android:pathData="M73.7,37.5a3,3 0 1,0 6,0a3,3 0 1,0 -6,0z" />
     <path
-        android:fillColor="#B9E66E"
-        android:pathData="M76.5,52.75h5v2.5h-5zM71.5,55.25h5v2.5h-5zM79,55.25h2.5v2.5h-2.5zM71.5,57.75h10v2.5h-10zM71.5,60.25h5v2.5h-5z" />
-    <path
-        android:fillColor="#1E1E1E"
-        android:pathData="M76.5,55.25h2.5v2.5h-2.5z" />
+        android:fillColor="#2E8BFF"
+        android:pathData="M46,54a8,8 0 1,0 16,0a8,8 0 1,0 -16,0z" />
 </vector>
