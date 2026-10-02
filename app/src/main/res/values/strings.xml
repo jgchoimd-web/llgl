@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">llgl</string>
+    <string name="game_title">NEON DESCENT</string>
+    <string name="game_subtitle">사이버펑크 도시의 내리막을 구슬로 질주하세요</string>
+    <string name="tap_to_start">화면을 탭해서 시작</string>
+    <string name="how_to_play">좌우로 드래그해 구슬을 조종하세요\n장벽은 피하고, 네온 오브는 모으면 +50점</string>
+    <string name="score_label">점수</string>
+    <string name="best_label">최고</string>
+    <string name="speed_label">속도</string>
+    <string name="game_over">충돌!</string>
+    <string name="new_best">최고 기록 갱신!</string>
+    <string name="tap_to_retry">탭해서 다시 시작</string>
+</resources>
