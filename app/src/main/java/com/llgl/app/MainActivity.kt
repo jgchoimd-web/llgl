@@ -146,6 +146,7 @@ private fun SetupScreen() {
                     )
 
                     SwitchRow(stringResource(R.string.setting_haptics), values.haptics) { on -> update { copy(haptics = on) } }
+                    SwitchRow(stringResource(R.string.setting_clicks), values.clicks) { on -> update { copy(clicks = on) } }
                     SwitchRow(stringResource(R.string.setting_hints), values.hints) { on -> update { copy(hints = on) } }
                     SwitchRow(stringResource(R.string.setting_left), values.leftHanded) { on -> update { copy(leftHanded = on) } }
                     SwitchRow(stringResource(R.string.setting_auto_space), values.autoSpace) { on -> update { copy(autoSpace = on) } }

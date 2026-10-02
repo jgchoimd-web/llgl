@@ -26,7 +26,7 @@ object DialLayers {
 
     val SYMBOLS_KEY = DialItem("123", KeyAction.ToggleSymbols)
     val LETTERS_KEY = DialItem("가나", KeyAction.ToggleSymbols)
-    val LANG_KEY = DialItem("한/영", KeyAction.ToggleLang)
+    val LANG_KEY = DialItem("한영", KeyAction.ToggleLang)
 
     val HANGUL_OUTER: List<DialItem> = listOf(
         SYMBOLS_KEY,

@@ -14,6 +14,8 @@ class KeyboardSettings(context: Context) {
         val longFlickDp: Int = 42,
         val tapRadiusDp: Int = 12,
         val haptics: Boolean = true,
+        /** The pulse click sound, on every tick and on the spring back. */
+        val clicks: Boolean = true,
         val hints: Boolean = true,
         val leftHanded: Boolean = false,
         val autoSpace: Boolean = true,
@@ -30,6 +32,7 @@ class KeyboardSettings(context: Context) {
             longFlickDp = prefs.getInt(KEY_LONG_FLICK, defaults.longFlickDp).coerceIn(24, 80),
             tapRadiusDp = prefs.getInt(KEY_TAP_RADIUS, defaults.tapRadiusDp).coerceIn(6, 24),
             haptics = prefs.getBoolean(KEY_HAPTICS, defaults.haptics),
+            clicks = prefs.getBoolean(KEY_CLICKS, defaults.clicks),
             hints = prefs.getBoolean(KEY_HINTS, defaults.hints),
             leftHanded = prefs.getBoolean(KEY_LEFT_HANDED, defaults.leftHanded),
             autoSpace = prefs.getBoolean(KEY_AUTO_SPACE, defaults.autoSpace),
@@ -44,6 +47,7 @@ class KeyboardSettings(context: Context) {
             putInt(KEY_LONG_FLICK, values.longFlickDp)
             putInt(KEY_TAP_RADIUS, values.tapRadiusDp)
             putBoolean(KEY_HAPTICS, values.haptics)
+            putBoolean(KEY_CLICKS, values.clicks)
             putBoolean(KEY_HINTS, values.hints)
             putBoolean(KEY_LEFT_HANDED, values.leftHanded)
             putBoolean(KEY_AUTO_SPACE, values.autoSpace)
@@ -72,6 +76,7 @@ class KeyboardSettings(context: Context) {
         private const val KEY_LONG_FLICK = "longFlickDp"
         private const val KEY_TAP_RADIUS = "tapRadiusDp"
         private const val KEY_HAPTICS = "haptics"
+        private const val KEY_CLICKS = "clicks"
         private const val KEY_HINTS = "hints"
         private const val KEY_LEFT_HANDED = "leftHanded"
         private const val KEY_AUTO_SPACE = "autoSpace"

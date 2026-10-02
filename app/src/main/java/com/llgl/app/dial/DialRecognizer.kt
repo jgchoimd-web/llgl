@@ -3,6 +3,7 @@ package com.llgl.app.dial
 import com.llgl.app.keyboard.Gesture
 import com.llgl.app.keyboard.GestureClassifier
 import com.llgl.app.keyboard.Pt
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -16,6 +17,9 @@ import kotlin.math.roundToInt
  * edge "pushes" the item (capital letter, alternate symbol).
  *
  * The hub works the same everywhere: tap = space, flicks = editing keys.
+ *
+ * Like a rotary phone, the plate under the thumb turns with it: [grabbedRing] and [rotation] say
+ * which plate and how far, so the view can draw the dial moving and spring it back on release.
  */
 class DialRecognizer(
     private val layout: DialLayout,
@@ -25,6 +29,8 @@ class DialRecognizer(
     private val tickDegrees: Float = 9f,
     tapRadius: Float,
     longDistance: Float,
+    /** How far past a ring edge the thumb must go before its zone changes, so edges do not flutter. */
+    private val hysteresis: Float = 0f,
 ) {
     sealed interface Result {
         data object None : Result
@@ -50,9 +56,14 @@ class DialRecognizer(
     private enum class Phase { NONE, HUB, OUTER, INNER_FIXED, VOWEL }
 
     private val classifier = GestureClassifier(tapRadius, longDistance)
+    private val edges = floatArrayOf(layout.radii[0], layout.radii[1], layout.radii[2], layout.radii[3] + layout.beyondMargin)
     private val hubPath = ArrayList<Pt>()
     private var phase = Phase.NONE
+    private var lastZone: Zone? = null
+    private var angle = 0f
     private var startRing: Ring? = null
+    private var onRing = true
+    private var ringEntry = 0f
     private var itemIndex = 0
     private var pushed = false
     private var initialIndex: Int? = null
@@ -65,6 +76,27 @@ class DialRecognizer(
     private var finalTicks = 0
     private var finalHardened = false
 
+    /** The plate turning with the thumb right now, or null in the hub or off every plate. */
+    val grabbedRing: Ring?
+        get() = when (phase) {
+            Phase.OUTER -> if (onRing) Ring.OUTER else null
+            Phase.INNER_FIXED -> if (onRing) startRing else null
+            Phase.VOWEL -> when {
+                finalActive -> Ring.OUTER
+                vowelSet == 0 -> Ring.VOWEL
+                else -> Ring.DEEP
+            }
+            else -> null
+        }
+
+    /** How far the grabbed plate has turned with the thumb since it was grabbed (radians, dial frame). */
+    val rotation: Float
+        get() = when (phase) {
+            Phase.OUTER, Phase.INNER_FIXED -> if (onRing) angle - ringEntry else 0f
+            Phase.VOWEL -> angle - (if (finalActive) finalEntry else vowelEntry)
+            else -> 0f
+        }
+
     /** Where the thumb entered the vowel ring it is on (radians), while a syllable is being dialled. */
     val vowelEntryAngle: Float?
         get() = if (phase == Phase.VOWEL) vowelEntry else null
@@ -76,7 +108,8 @@ class DialRecognizer(
     fun begin(x: Float, y: Float) {
         reset()
         val (r, a) = layout.toPolar(x, y)
-        when (val zone = layout.zone(r)) {
+        angle = a
+        when (val zone = stableZone(r)) {
             Zone.HUB -> {
                 phase = Phase.HUB
                 hubPath += Pt(x, y)
@@ -84,6 +117,7 @@ class DialRecognizer(
             Zone.OUTER, Zone.BEYOND -> {
                 phase = Phase.OUTER
                 startRing = Ring.OUTER
+                ringEntry = a
                 itemIndex = layout.index(Ring.OUTER, a, outerCount)
                 initialIndex = itemIndex
             }
@@ -97,6 +131,7 @@ class DialRecognizer(
                     vowelEntry = a
                 } else {
                     phase = Phase.INNER_FIXED
+                    ringEntry = a
                     itemIndex = layout.index(ring, a, innerCounts.getValue(ring))
                 }
             }
@@ -105,12 +140,17 @@ class DialRecognizer(
 
     fun move(x: Float, y: Float) {
         val (r, a) = layout.toPolar(x, y)
-        val zone = layout.zone(r)
+        angle = a
+        val zone = stableZone(r)
         when (phase) {
             Phase.NONE -> Unit
             Phase.HUB -> hubPath += Pt(x, y)
             Phase.OUTER -> when (zone) {
                 Zone.OUTER, Zone.BEYOND -> {
+                    if (!onRing) {
+                        onRing = true
+                        ringEntry = a
+                    }
                     itemIndex = layout.index(Ring.OUTER, a, outerCount)
                     initialIndex = itemIndex
                     if (zone == Zone.BEYOND) {
@@ -125,15 +165,22 @@ class DialRecognizer(
                         vowelSet = if (zone == Zone.VOWEL) 0 else 1
                         vowelEntry = a
                         vowelTicks = 0
+                    } else {
+                        onRing = false
                     }
                 }
             }
             Phase.INNER_FIXED -> {
                 val ring = startRing!!
                 if (layout.ringOf(zone) == ring) {
+                    if (!onRing) {
+                        onRing = true
+                        ringEntry = a
+                    }
                     itemIndex = layout.index(ring, a, innerCounts.getValue(ring))
                 } else {
                     pushed = true
+                    onRing = false
                 }
             }
             Phase.VOWEL -> when (zone) {
@@ -192,10 +239,29 @@ class DialRecognizer(
     private fun ticks(entry: Float, angle: Float): Int =
         (Math.toDegrees((entry - angle).toDouble()) / tickDegrees).roundToInt()
 
+    /** The zone at radius [r], except that a ring edge only counts once crossed by more than [hysteresis]. */
+    private fun stableZone(r: Float): Zone {
+        val zone = layout.zone(r)
+        val last = lastZone
+        if (last == null || zone == last || hysteresis <= 0f) {
+            lastZone = zone
+            return zone
+        }
+        var nearestEdge = edges[0]
+        for (edge in edges) if (abs(edge - r) < abs(nearestEdge - r)) nearestEdge = edge
+        if (abs(r - nearestEdge) < hysteresis) return last
+        lastZone = zone
+        return zone
+    }
+
     private fun reset() {
         phase = Phase.NONE
+        lastZone = null
+        angle = 0f
         hubPath.clear()
         startRing = null
+        onRing = true
+        ringEntry = 0f
         itemIndex = 0
         pushed = false
         initialIndex = null

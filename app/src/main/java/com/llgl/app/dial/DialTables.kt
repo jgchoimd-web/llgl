@@ -29,16 +29,22 @@ object DialTables {
     /** Pushing past the outer edge "hardens" a consonant. */
     val STRENGTHEN: Map<Char, Char> = mapOf('ㄱ' to 'ㄲ', 'ㄷ' to 'ㄸ', 'ㅂ' to 'ㅃ', 'ㅅ' to 'ㅆ', 'ㅈ' to 'ㅉ')
 
-    fun vowel(set: Int, ticks: Int): Char = nearest(if (set == 0) VOWELS_A else VOWELS_B, ticks)
+    fun vowel(set: Int, ticks: Int): Char = vowels(set).getValue(vowelKey(set, ticks))
 
-    fun final(ticks: Int): Char = nearest(FINALS, ticks)
+    fun final(ticks: Int): Char = FINALS.getValue(finalKey(ticks))
+
+    /** The table entry [ticks] lands on, for highlighting the dial. */
+    fun vowelKey(set: Int, ticks: Int): Int = nearestKey(vowels(set), ticks)
+
+    fun finalKey(ticks: Int): Int = nearestKey(FINALS, ticks)
+
+    fun vowels(set: Int): Map<Int, Char> = if (set == 0) VOWELS_A else VOWELS_B
 
     fun strengthen(c: Char): Char = STRENGTHEN[c] ?: c
 
     /** Ticks past the end of a table snap to its nearest entry on that side. */
-    private fun nearest(table: Map<Int, Char>, ticks: Int): Char {
-        table[ticks]?.let { return it }
-        val key = table.keys.minByOrNull { abs(it - ticks) * 2 + (if ((it < 0) == (ticks < 0)) 0 else 1) }!!
-        return table.getValue(key)
+    private fun nearestKey(table: Map<Int, Char>, ticks: Int): Int {
+        if (table.containsKey(ticks)) return ticks
+        return table.keys.minByOrNull { abs(it - ticks) * 2 + (if ((it < 0) == (ticks < 0)) 0 else 1) }!!
     }
 }

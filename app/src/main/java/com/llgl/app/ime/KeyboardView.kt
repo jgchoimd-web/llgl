@@ -12,7 +12,7 @@ import android.os.Looper
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
-import com.llgl.app.dial.DialItem
+import android.view.animation.AnimationUtils
 import com.llgl.app.dial.DialLayers
 import com.llgl.app.dial.DialLayout
 import com.llgl.app.dial.DialRecognizer
@@ -23,14 +23,15 @@ import com.llgl.app.keyboard.KeyAction
 import com.llgl.app.keyboard.Layer
 import com.llgl.app.keyboard.Pt
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.min
 
 /**
- * The keyboard surface: a rotary dial for one thumb. Draws the hub and the three rings, follows
- * the thumb through a [DialRecognizer], clicks on every tick like a pulse dial, and hands the
- * finished gesture to the IME. A candidate/preview bar sits on top. Plain android.view.View for
- * low input latency.
+ * The keyboard surface: a rotary pulse dial for one thumb. Three finger-hole plates turn with the
+ * thumb over labels printed on the base, click once per pulse, and spring back home clicking the
+ * same number of pulses when let go, like a telephone dial. [DialRecognizer] decides what the
+ * gesture means; this view only shows it. A candidate/preview bar sits on top.
  */
 class KeyboardView(context: Context) : View(context) {
 
@@ -67,17 +68,47 @@ class KeyboardView(context: Context) : View(context) {
             invalidate()
         }
 
+    /** One finger-hole plate: how far it is turned, whether the thumb holds it, and its spring back home. */
+    private class Plate {
+        var rotation = 0f
+        var grabbed = false
+
+        /** Pulse rings: the angle the relative labels are laid out around (null = the ring's middle). */
+        var legendEntry: Float? = null
+
+        /** The outer plate shows the finals while one is being dialled. */
+        var finals = false
+        var springing = false
+        var springFrom = 0f
+        var springStart = 0L
+        var springDuration = 1L
+        var springPulsed = 0
+
+        fun reset() {
+            rotation = 0f
+            grabbed = false
+            legendEntry = null
+            finals = false
+            springing = false
+        }
+    }
+
+    /** A label printed on the base under a hole: its home angle, text, and which table key or item it is. */
+    private class Slot(val angle: Float, val label: String, val key: Int, val special: Boolean)
+
     private val density = resources.displayMetrics.density
     private val barHeight = 44f * density
     private val gap = 1.5f * density
     private var layout: DialLayout? = null
     private var recognizer: DialRecognizer? = null
-    private var sectors: Map<Pair<Ring, Int>, Path> = emptyMap()
-    private var bands: Map<Ring, Path> = emptyMap()
+    private val plates = Array(Ring.entries.size) { Plate() }
+    private var click: PulseClick? = null
     private val pulseMode: Boolean get() = DialLayers.inner(layer, Ring.VOWEL) == null
+    private val tickRad: Float get() = rad(settings.tickDegrees.toFloat())
 
     private val trail = ArrayList<Pt>()
     private val trailPath = Path()
+    private val platePath = Path()
     private var pointerId = -1
     private var inBar = false
     private var touching = false
@@ -105,67 +136,56 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
-    private val bgColor = Color.parseColor("#0E1116")
-    private val barColor = Color.parseColor("#090B0F")
-    private val labelColor = Color.parseColor("#E8ECF3")
-    private val holeLabelColor = Color.parseColor("#C5CDDB")
-    private val hubFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#141923") }
-    private val hubPressedFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#223049") }
-    private val deepFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#121722") }
-    private val vowelFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#171D29") }
-    private val outerFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#1C2230") }
-    private val specialFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#141923") }
-    private val pressedFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#2E8BFF") }
-    private val pushedFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF7A59") }
-    private val holeFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#0A0D12") }
-    private val holeActiveFill = pressedFill
-    private val holeHardenedFill = pushedFill
+    // A vintage telephone: bakelite base, graphite plates with chrome rims, ivory print, amber for the selection.
+    private val baseColor = Color.parseColor("#14100E")
+    private val barColor = Color.parseColor("#0C0A08")
+    private val ivory = Color.parseColor("#EFE6CF")
+    private val ivoryDim = Color.parseColor("#9C9484")
+    private val amber = Color.parseColor("#FFB347")
+    private val platePaint = fill("#2B2E34")
+    private val plateEdgePaint = stroke("#8F949C", 1.5f)
+    private val holeRimPaint = stroke("#4D5159", 1.5f)
+    private val holeSelectedRimPaint = stroke("#FFB347", 2.5f)
+    private val hubPaint = fill("#2E3136")
+    private val hubPressedPaint = fill("#3D4149")
+    private val hubRimPaint = stroke("#6B7078", 2f)
+    private val stopPaint = stroke("#C9CED6", 7f).apply { strokeCap = Paint.Cap.ROUND }
+    private val stopShadowPaint = stroke("#66000000", 11f).apply { strokeCap = Paint.Cap.ROUND }
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = labelColor
+        color = ivory
         textAlign = Paint.Align.CENTER
         typeface = Typeface.DEFAULT_BOLD
-        textSize = 22f * density
-    }
-    private val holeText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = holeLabelColor
-        textAlign = Paint.Align.CENTER
-        typeface = Typeface.DEFAULT_BOLD
-        textSize = 18f * density
     }
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#8A94A6")
-        textAlign = Paint.Align.CENTER
-        textSize = 11f * density
-    }
-    private val hubHintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#8A94A6")
+        color = ivoryDim
         textAlign = Paint.Align.CENTER
         textSize = 18f * density
     }
     private val barTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = labelColor
+        color = ivory
         textAlign = Paint.Align.CENTER
         textSize = 17f * density
     }
     private val previewPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#7CC4FF")
+        color = amber
         textAlign = Paint.Align.CENTER
         typeface = Typeface.DEFAULT_BOLD
         textSize = 30f * density
     }
     private val barFill = Paint().apply { color = barColor }
-    private val dividerPaint = Paint().apply { color = Color.parseColor("#232A38"); strokeWidth = density }
-    private val spaceBarPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#AEB7C6")
-        strokeWidth = 3f * density
-        strokeCap = Paint.Cap.ROUND
-    }
-    private val trailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#9A2E8BFF")
-        style = Paint.Style.STROKE
-        strokeWidth = 6f * density
+    private val dividerPaint = Paint().apply { color = Color.parseColor("#2A2420"); strokeWidth = density }
+    private val spaceBarPaint = stroke("#EFE6CF", 3f).apply { strokeCap = Paint.Cap.ROUND }
+    private val trailPaint = stroke("#90FFB347", 6f).apply {
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
+    }
+
+    private fun fill(color: String) = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = Color.parseColor(color) }
+
+    private fun stroke(color: String, widthDp: Float) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        this.color = Color.parseColor(color)
+        style = Paint.Style.STROKE
+        strokeWidth = widthDp * density
     }
 
     // ---------------------------------------------------------------------------------------
@@ -192,6 +212,7 @@ class KeyboardView(context: Context) : View(context) {
     private fun rebuildForLayer() {
         val layout = layout ?: return
         if (touching) cancelTouch()
+        for (plate in plates) plate.reset()
         val inner = Ring.entries
             .filter { it != Ring.OUTER }
             .mapNotNull { ring -> DialLayers.inner(layer, ring)?.let { ring to it.size } }
@@ -204,43 +225,81 @@ class KeyboardView(context: Context) : View(context) {
             tickDegrees = settings.tickDegrees.toFloat(),
             tapRadius = settings.tapRadiusDp * density,
             longDistance = settings.longFlickDp * density,
+            hysteresis = 4f * density,
         )
-        val paths = HashMap<Pair<Ring, Int>, Path>()
-        for (ring in Ring.entries) {
-            val items = DialLayers.items(layer, ring) ?: continue
-            for (i in items.indices) paths[ring to i] = arcPath(layout, ring, items.size, i)
-        }
-        sectors = paths
-        bands = Ring.entries.associateWith { arcPath(layout, it, 1, 0, steps = 32) }
     }
 
-    /** One sector of a ring (the whole band when [count] is 1), with a small gap to its neighbours. */
-    private fun arcPath(layout: DialLayout, ring: Ring, count: Int, index: Int, steps: Int = 8): Path {
-        val (rIn0, rOut0) = layout.ringRadii(ring)
-        val rIn = rIn0 + gap
-        val rOut = rOut0 - gap
-        val (a0raw, a1raw) = layout.itemAngles(ring, count, index)
-        val da = if (count > 1) gap / ((rIn + rOut) / 2f) else 0f
-        val a0 = a0raw + da
-        val a1 = a1raw - da
-        val p = Path()
-        val first = layout.toScreen(rOut, a1)
-        p.moveTo(first.x, first.y)
-        for (i in 1..steps) {
-            val q = layout.toScreen(rOut, a1 - (a1 - a0) * i / steps)
-            p.lineTo(q.x, q.y)
-        }
-        for (i in 0..steps) {
-            val q = layout.toScreen(rIn, a0 + (a1 - a0) * i / steps)
-            p.lineTo(q.x, q.y)
-        }
-        p.close()
-        return p
-    }
+    private fun plate(ring: Ring): Plate = plates[ring.ordinal]
 
     private fun rad(degrees: Float): Float = (degrees * PI / 180.0).toFloat()
 
     private fun midAngle(layout: DialLayout, ring: Ring): Float = layout.range(ring).let { (a, b) -> (a + b) / 2f }
+
+    /** Whether [ring] is read as pulses right now: Hangul inner rings, and the outer ring while a final is dialled. */
+    private fun pulseRing(ring: Ring): Boolean = pulseMode && (ring != Ring.OUTER || plate(ring).finals)
+
+    private fun pulseTable(ring: Ring): Map<Int, Char> = when (ring) {
+        Ring.OUTER -> DialTables.FINALS
+        Ring.VOWEL -> DialTables.VOWELS_A
+        Ring.DEEP -> DialTables.VOWELS_B
+    }
+
+    /** The labels on the base of [ring]: a pulse table laid out around the entry angle, or the layer's fixed items. */
+    private fun slots(ring: Ring, layout: DialLayout): List<Slot> {
+        if (pulseRing(ring)) {
+            val entry = plate(ring).legendEntry ?: midAngle(layout, ring)
+            val t = tickRad
+            return pulseTable(ring).entries.map { (k, ch) -> Slot(entry - k * t, ch.toString(), k, false) }
+        }
+        val items = DialLayers.items(layer, ring) ?: return emptyList()
+        return items.mapIndexed { i, item ->
+            val (a0, a1) = layout.itemAngles(ring, items.size, i)
+            Slot((a0 + a1) / 2f, item.label, i, item.isSpecial)
+        }
+    }
+
+    private fun slotStep(ring: Ring, layout: DialLayout, count: Int): Float =
+        if (pulseRing(ring)) tickRad else layout.range(ring).let { (a, b) -> (b - a) / count }
+
+    // ---------------------------------------------------------------------------------------
+    // Selection
+    // ---------------------------------------------------------------------------------------
+
+    /** The slot key the thumb has dialled on [ring], or null. */
+    private fun selectedKey(ring: Ring): Int? = when (val r = current) {
+        is DialRecognizer.Result.Item -> if (r.ring == ring) r.index else null
+        is DialRecognizer.Result.Syllable -> when (ring) {
+            Ring.OUTER -> if (plate(ring).finals) r.finalTicks?.let { DialTables.finalKey(it) } else r.initialIndex
+            Ring.VOWEL -> if (r.vowelSet == 0) DialTables.vowelKey(0, r.vowelTicks) else null
+            Ring.DEEP -> if (r.vowelSet == 1) DialTables.vowelKey(1, r.vowelTicks) else null
+        }
+        else -> null
+    }
+
+    /** What the selected label on [ring] reads once a push changed it: hardened consonant, capital, alternate symbol. */
+    private fun selectedLabel(ring: Ring): String? {
+        when (val r = current) {
+            is DialRecognizer.Result.Item -> {
+                if (r.ring != ring || !r.pushed) return null
+                val item = DialLayers.items(layer, ring)?.getOrNull(r.index) ?: return null
+                val action = item.action
+                return if (action is KeyAction.Consonant) DialTables.strengthen(action.c).toString() else (item.pushed as? KeyAction.Text)?.text
+            }
+            is DialRecognizer.Result.Syllable -> {
+                if (ring != Ring.OUTER) return null
+                if (plate(ring).finals) {
+                    val ticks = r.finalTicks ?: return null
+                    if (!r.finalHardened) return null
+                    val hard = DialTables.strengthen(DialTables.final(ticks))
+                    return if (Jamo.canBeFinal(hard)) hard.toString() else null
+                }
+                if (!r.initialHardened) return null
+                val item = r.initialIndex?.let { DialLayers.outer(layer).getOrNull(it) } ?: return null
+                return (item.action as? KeyAction.Consonant)?.let { DialTables.strengthen(it.c).toString() }
+            }
+            else -> return null
+        }
+    }
 
     // ---------------------------------------------------------------------------------------
     // Drawing
@@ -248,13 +307,15 @@ class KeyboardView(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         val layout = layout ?: return
-        canvas.drawColor(bgColor)
+        val animating = advanceSprings(AnimationUtils.currentAnimationTimeMillis())
+        canvas.drawColor(baseColor)
         drawBar(canvas)
         canvas.save()
         canvas.translate(0f, barHeight)
         canvas.clipRect(0f, 0f, width.toFloat(), layout.height)
         drawHub(canvas, layout)
-        if (pulseMode) drawPulseRings(canvas, layout) else drawFixedRings(canvas, layout)
+        for (ring in Ring.entries) drawRing(canvas, layout, ring)
+        drawFingerStop(canvas, layout)
         if (settings.showTrail && trail.size > 1) {
             trailPath.rewind()
             trailPath.moveTo(trail[0].x, trail[0].y)
@@ -262,130 +323,89 @@ class KeyboardView(context: Context) : View(context) {
             canvas.drawPath(trailPath, trailPaint)
         }
         canvas.restore()
+        if (animating) postInvalidateOnAnimation()
     }
 
     private fun drawHub(canvas: Canvas, layout: DialLayout) {
         val pivot = layout.toScreen(0f, 0f)
+        val r0 = layout.radii[0] - gap
         val pressed = touching && current is DialRecognizer.Result.Hub
-        val r0 = layout.radii[0]
-        canvas.drawCircle(pivot.x, pivot.y, r0 - gap, if (pressed) hubPressedFill else hubFill)
+        canvas.drawCircle(pivot.x, pivot.y, r0, if (pressed) hubPressedPaint else hubPaint)
+        canvas.drawCircle(pivot.x, pivot.y, r0, hubRimPaint)
         val s = layout.toScreen(r0 * 0.40f, rad(135f))
         val half = 11f * density
         canvas.drawLine(s.x - half, s.y, s.x + half, s.y, spaceBarPaint)
         if (!settings.hints) return
         val back = layout.toScreen(r0 * 0.72f, rad(158f))
-        drawCentered(canvas, "⌫", back.x, back.y, hubHintPaint)
+        drawCentered(canvas, "⌫", back.x, back.y, hintPaint)
         val enter = layout.toScreen(r0 * 0.72f, rad(112f))
-        drawCentered(canvas, "↵", enter.x, enter.y, hubHintPaint)
+        drawCentered(canvas, "↵", enter.x, enter.y, hintPaint)
     }
 
-    /** Hangul: inner rings are finger holes laid out from where the thumb entered; the outer ring holds the consonants. */
-    private fun drawPulseRings(canvas: Canvas, layout: DialLayout) {
-        val syllable = current as? DialRecognizer.Result.Syllable
-        val vowelEntry = recognizer?.vowelEntryAngle
-        val finalEntry = recognizer?.finalEntryAngle
-        val tickRad = rad(settings.tickDegrees.toFloat())
-
-        for (ring in INNER_RINGS) {
-            canvas.drawPath(bands.getValue(ring), ringFill(ring))
-            val set = if (ring == Ring.DEEP) 1 else 0
-            val onThisRing = syllable != null && syllable.vowelSet == set && vowelEntry != null
-            val entry = if (onThisRing) vowelEntry!! else midAngle(layout, ring)
-            val table = if (set == 0) DialTables.VOWELS_A else DialTables.VOWELS_B
-            drawHoles(canvas, layout, ring, table, entry, if (onThisRing) syllable!!.vowelTicks else null, false, tickRad)
-        }
-
-        if (syllable != null && finalEntry != null) {
-            canvas.drawPath(bands.getValue(Ring.OUTER), ringFill(Ring.OUTER))
-            drawHoles(canvas, layout, Ring.OUTER, DialTables.FINALS, finalEntry, syllable.finalTicks, syllable.finalHardened, tickRad)
-        } else {
-            drawItems(canvas, layout, Ring.OUTER)
-        }
-    }
-
-    private fun drawFixedRings(canvas: Canvas, layout: DialLayout) {
-        for (ring in Ring.entries) drawItems(canvas, layout, ring)
-    }
-
-    private fun ringFill(ring: Ring): Paint = when (ring) {
-        Ring.DEEP -> deepFill
-        Ring.VOWEL -> vowelFill
-        Ring.OUTER -> outerFill
-    }
-
-    private fun drawItems(canvas: Canvas, layout: DialLayout, ring: Ring) {
-        val items = DialLayers.items(layer, ring) ?: return
-        val hit = hitIndex(ring)
-        val pushed = hitPushed()
-        for ((i, item) in items.withIndex()) {
-            val path = sectors[ring to i] ?: continue
-            val fill = when {
-                i == hit && pushed -> pushedFill
-                i == hit -> pressedFill
-                item.isSpecial -> specialFill
-                else -> ringFill(ring)
-            }
-            canvas.drawPath(path, fill)
-            val c = layout.itemCenter(ring, items.size, i)
-            val label = item.label
-            labelPaint.textSize = (if (label.length > 1) 14f else 22f) * density
-            labelPaint.color = if (i == hit) Color.WHITE else labelColor
-            drawCentered(canvas, label, c.x, c.y, labelPaint)
-            if (!settings.hints) continue
-            val hint = pushedHint(item) ?: continue
-            val (rIn, _) = layout.ringRadii(ring)
-            val (a0, a1) = layout.itemAngles(ring, items.size, i)
-            val h = layout.toScreen(rIn + 12f * density, (a0 + a1) / 2f)
-            drawCentered(canvas, hint, h.x, h.y, hintPaint)
-        }
-    }
-
-    /** Finger holes every tick around [entry]; positive ticks run clockwise (toward the top of the screen). */
-    private fun drawHoles(
-        canvas: Canvas, layout: DialLayout, ring: Ring, table: Map<Int, Char>,
-        entry: Float, active: Int?, hardened: Boolean, tickRad: Float,
-    ) {
+    /** Labels on the base, then the plate with a hole over each label, turned as far as the thumb turned it. */
+    private fun drawRing(canvas: Canvas, layout: DialLayout, ring: Ring) {
+        val slots = slots(ring, layout)
+        if (slots.isEmpty()) return
+        val plate = plate(ring)
         val (rIn, rOut) = layout.ringRadii(ring)
         val rMid = (rIn + rOut) / 2f
-        val (aMin, aMax) = layout.range(ring)
-        val holeR = min((rOut - rIn) * 0.34f, rMid * tickRad * 0.42f)
-        holeText.textSize = min(holeR * 1.3f, 22f * density)
-        for ((k, ch) in table) {
-            val a = entry - k * tickRad
-            if (a < aMin - tickRad * 0.4f || a > aMax + tickRad * 0.4f) continue
-            val c = layout.toScreen(rMid, a)
-            val isActive = active == k
-            val fill = when {
-                isActive && hardened -> holeHardenedFill
-                isActive -> holeActiveFill
-                else -> holeFill
+        val holeR = min((rOut - rIn) * 0.36f, rMid * slotStep(ring, layout, slots.size) * 0.44f)
+        val selected = selectedKey(ring)
+        val override = selectedLabel(ring)
+
+        for (s in slots) {
+            val c = layout.toScreen(rMid, s.angle)
+            val isSelected = selected != null && s.key == selected
+            val text = if (isSelected && override != null) override else s.label
+            labelPaint.color = when {
+                isSelected -> amber
+                s.special -> ivoryDim
+                else -> ivory
             }
-            canvas.drawCircle(c.x, c.y, holeR, fill)
-            val hard = DialTables.strengthen(ch)
-            val text = if (isActive && hardened && Jamo.canBeFinal(hard)) hard else ch
-            holeText.color = if (isActive) Color.WHITE else holeLabelColor
-            drawCentered(canvas, text.toString(), c.x, c.y, holeText)
+            labelPaint.textSize = if (text.length > 1) min(holeR * 0.8f, 12f * density) else min(holeR * 1.25f, 22f * density)
+            drawCentered(canvas, text, c.x, c.y, labelPaint)
+        }
+
+        val pivot = layout.toScreen(0f, 0f)
+        platePath.rewind()
+        platePath.fillType = Path.FillType.EVEN_ODD
+        platePath.addCircle(pivot.x, pivot.y, rOut - gap, Path.Direction.CW)
+        platePath.addCircle(pivot.x, pivot.y, rIn + gap, Path.Direction.CW)
+        for (s in slots) {
+            val c = layout.toScreen(rMid, s.angle + plate.rotation)
+            platePath.addCircle(c.x, c.y, holeR, Path.Direction.CW)
+        }
+        canvas.drawPath(platePath, platePaint)
+        canvas.drawCircle(pivot.x, pivot.y, rOut - gap, plateEdgePaint)
+        canvas.drawCircle(pivot.x, pivot.y, rIn + gap, plateEdgePaint)
+
+        // Hole rims; the hole that has travelled over the selected label is lit.
+        val target = if (selected == null) null else slots.firstOrNull { it.key == selected }
+        var lit: Slot? = null
+        if (target != null) {
+            var best = Float.MAX_VALUE
+            for (s in slots) {
+                val d = abs(s.angle + plate.rotation - target.angle)
+                if (d < best) {
+                    best = d
+                    lit = s
+                }
+            }
+        }
+        for (s in slots) {
+            val c = layout.toScreen(rMid, s.angle + plate.rotation)
+            canvas.drawCircle(c.x, c.y, holeR, if (s === lit) holeSelectedRimPaint else holeRimPaint)
         }
     }
 
-    private fun hitIndex(ring: Ring): Int? = when (val r = current) {
-        is DialRecognizer.Result.Item -> if (r.ring == ring) r.index else null
-        is DialRecognizer.Result.Syllable -> if (ring == Ring.OUTER) r.initialIndex else null
-        else -> null
-    }
-
-    private fun hitPushed(): Boolean = when (val r = current) {
-        is DialRecognizer.Result.Item -> r.pushed
-        is DialRecognizer.Result.Syllable -> r.initialHardened
-        else -> false
-    }
-
-    /** The small label showing what a radial push turns the item into. */
-    private fun pushedHint(item: DialItem): String? {
-        val action = item.action
-        if (action is KeyAction.Consonant) return DialTables.STRENGTHEN[action.c]?.toString()
-        val pushed = (item.pushed as? KeyAction.Text)?.text ?: return null
-        return if (pushed.equals(item.label, ignoreCase = true)) null else pushed
+    /** The chrome finger stop at the top end of the outer ring, as on a telephone dial. */
+    private fun drawFingerStop(canvas: Canvas, layout: DialLayout) {
+        val (rIn, rOut) = layout.ringRadii(Ring.OUTER)
+        val a = layout.range(Ring.OUTER).first + rad(2.5f)
+        val p0 = layout.toScreen(rIn + 8f * density, a)
+        val p1 = layout.toScreen(rOut - 3f * density, a)
+        canvas.drawLine(p0.x, p0.y, p1.x, p1.y, stopShadowPaint)
+        canvas.drawLine(p0.x, p0.y, p1.x, p1.y, stopPaint)
     }
 
     private fun drawCentered(canvas: Canvas, text: String, x: Float, y: Float, paint: Paint) {
@@ -407,6 +427,83 @@ class KeyboardView(context: Context) : View(context) {
             drawCentered(canvas, word, cell * i + cell / 2f, middle, barTextPaint)
             if (i > 0) canvas.drawLine(cell * i, 8f * density, cell * i, barHeight - 8f * density, dividerPaint)
         }
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Plates: following the thumb, and springing home with pulses
+    // ---------------------------------------------------------------------------------------
+
+    /** Matches the plates to what the recognizer says the thumb holds; a plate let go of springs home. */
+    private fun syncPlates() {
+        val rec = recognizer
+        val grabbed = if (touching && rec != null) rec.grabbedRing else null
+        for (ring in Ring.entries) {
+            val plate = plate(ring)
+            if (rec != null && ring == grabbed) {
+                if (!plate.grabbed) {
+                    plate.grabbed = true
+                    plate.springing = false
+                }
+                plate.rotation = rec.rotation
+                if (pulseMode) {
+                    if (ring == Ring.OUTER) {
+                        val finalEntry = rec.finalEntryAngle
+                        plate.finals = finalEntry != null
+                        if (finalEntry != null) plate.legendEntry = finalEntry
+                    } else {
+                        rec.vowelEntryAngle?.let { plate.legendEntry = it }
+                    }
+                }
+            } else if (plate.grabbed) {
+                release(plate)
+            }
+        }
+    }
+
+    private fun release(plate: Plate) {
+        plate.grabbed = false
+        if (abs(plate.rotation) < 1e-3f) {
+            plate.rotation = 0f
+            return
+        }
+        plate.springing = true
+        plate.springFrom = plate.rotation
+        plate.springStart = AnimationUtils.currentAnimationTimeMillis()
+        plate.springDuration = (abs(plate.rotation) / tickRad * MS_PER_PULSE).toLong().coerceIn(120L, 420L)
+        plate.springPulsed = 0
+        postInvalidateOnAnimation()
+    }
+
+    /** Moves every springing plate toward home, clicking once per tick it passes. Returns true while any still moves. */
+    private fun advanceSprings(now: Long): Boolean {
+        var active = false
+        val t = tickRad
+        for (ring in Ring.entries) {
+            val plate = plate(ring)
+            if (!plate.springing) continue
+            val progress = ((now - plate.springStart).toFloat() / plate.springDuration).coerceIn(0f, 1f)
+            val eased = 1f - (1f - progress) * (1f - progress)
+            plate.rotation = plate.springFrom * (1f - eased)
+            val passed = (abs(plate.springFrom - plate.rotation) / t).toInt()
+            while (plate.springPulsed < passed) {
+                plate.springPulsed++
+                pulse()
+            }
+            if (progress >= 1f) {
+                plate.springing = false
+                plate.rotation = 0f
+                if (ring == Ring.OUTER && !plate.grabbed) plate.finals = false
+            } else {
+                active = true
+            }
+        }
+        return active
+    }
+
+    /** One pulse of the dial: a tick in the thumb and a click in the ear. */
+    private fun pulse() {
+        haptic(HapticFeedbackConstants.CLOCK_TICK)
+        if (settings.clicks) (click ?: PulseClick().also { click = it }).play()
     }
 
     // ---------------------------------------------------------------------------------------
@@ -459,8 +556,10 @@ class KeyboardView(context: Context) : View(context) {
         startY = y
         trail.clear()
         trail += Pt(x, y)
+        plate(Ring.OUTER).finals = false
         rec.begin(x, y)
         current = rec.result()
+        syncPlates()
         previewText = listener?.preview(current) ?: ""
         haptic(HapticFeedbackConstants.KEYBOARD_TAP)
         if (current is DialRecognizer.Result.Hub) handler.postDelayed(holdRunnable, HOLD_DELAY_MS)
@@ -480,8 +579,9 @@ class KeyboardView(context: Context) : View(context) {
         if (next != current) {
             current = next
             previewText = listener?.preview(next) ?: ""
-            haptic(HapticFeedbackConstants.CLOCK_TICK)
+            pulse()
         }
+        syncPlates()
         invalidate()
     }
 
@@ -514,6 +614,7 @@ class KeyboardView(context: Context) : View(context) {
         trail.clear()
         previewText = ""
         current = DialRecognizer.Result.None
+        syncPlates()
         invalidate()
     }
 
@@ -536,13 +637,17 @@ class KeyboardView(context: Context) : View(context) {
 
     override fun onDetachedFromWindow() {
         handler.removeCallbacksAndMessages(null)
+        click?.release()
+        click = null
         super.onDetachedFromWindow()
     }
 
     private companion object {
-        val INNER_RINGS = listOf(Ring.DEEP, Ring.VOWEL)
         const val MAX_CANDIDATES = 4
         const val HOLD_DELAY_MS = 450L
         const val REPEAT_INTERVAL_MS = 55L
+
+        /** How long the spring back takes per pulse; a real dial does about 100 ms, this one hurries. */
+        const val MS_PER_PULSE = 45f
     }
 }

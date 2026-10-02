@@ -167,6 +167,50 @@ class DialRecognizerTest {
     }
 
     @Test
+    fun `the plate under the thumb turns with it and the next plate starts unturned`() {
+        val rec = pulse()
+        val r = ringMid(Ring.OUTER)
+        val a7 = angleOf(Ring.OUTER, 16, 7)
+        val a9 = angleOf(Ring.OUTER, 16, 9)
+        val p = layout.toScreen(r, a7)
+        rec.begin(p.x, p.y)
+        assertEquals(Ring.OUTER, rec.grabbedRing)
+        assertEquals(0f, rec.rotation, 1e-4f)
+        rec.glide(r, a7, r, a9)
+        assertEquals(a9 - a7, rec.rotation, 1e-3f)
+        rec.glide(r, a9, ringMid(Ring.VOWEL), a9)
+        assertEquals(Ring.VOWEL, rec.grabbedRing)
+        assertEquals(0f, rec.rotation, 1e-3f)
+        rec.glide(ringMid(Ring.VOWEL), a9, ringMid(Ring.VOWEL), a9 - deg(2 * tick))
+        assertEquals(-deg(2 * tick), rec.rotation, 1e-3f)
+        rec.glide(ringMid(Ring.VOWEL), a9 - deg(2 * tick), ringMid(Ring.OUTER), a9 - deg(2 * tick))
+        assertEquals(Ring.OUTER, rec.grabbedRing)
+        assertEquals(0f, rec.rotation, 1e-3f)
+        rec.end()
+        assertNull(rec.grabbedRing)
+    }
+
+    @Test
+    fun `a ring edge only changes zone once crossed by more than the hysteresis`() {
+        val rec = DialRecognizer(
+            layout, pulseMode = true, outerCount = 16, tickDegrees = tick,
+            tapRadius = 12f * density, longDistance = 42f * density, hysteresis = 20f,
+        )
+        val a = angleOf(Ring.OUTER, 16, 8)
+        val edge = layout.radii[2]
+        val p = layout.toScreen(ringMid(Ring.OUTER), a)
+        rec.begin(p.x, p.y)
+        rec.glide(ringMid(Ring.OUTER), a, edge - 10f, a)
+        assertTrue(rec.result() is DialRecognizer.Result.Item)
+        rec.glide(edge - 10f, a, edge - 30f, a)
+        assertTrue(rec.result() is DialRecognizer.Result.Syllable)
+        // Drifting back within the band around the edge keeps the vowel ring.
+        rec.glide(edge - 30f, a, edge + 10f, a)
+        assertTrue(rec.result() is DialRecognizer.Result.Syllable)
+        assertNull((rec.end() as DialRecognizer.Result.Syllable).finalTicks)
+    }
+
+    @Test
     fun `fixed mode reads inner rings as items and a crossing as a push`() {
         val rec = fixed()
         val p = layout.itemCenter(Ring.VOWEL, 12, 5)
