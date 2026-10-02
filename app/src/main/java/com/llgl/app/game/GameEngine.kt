@@ -4,23 +4,24 @@ import kotlin.math.abs
 import kotlin.math.min
 import kotlin.random.Random
 
-enum class Phase { READY, PLAYING, GAME_OVER }
+enum class Phase { READY, PLAYING, PAUSED, GAME_OVER }
 
-enum class ObstacleKind { BARRIER, ORB }
+enum class ObstacleKind { BARRIER, ORB, BOOST }
 
 /**
  * Something on the road. [d] is the distance from the camera in road units
- * ([GameEngine.NEAR] is right in front of the player, [GameEngine.FAR] is where things spawn),
- * [u] is the lateral position where -1 and 1 are the road edges.
+ * ([GameEngine.NEAR] is the bottom of the screen, [GameEngine.FAR] the far edge where things
+ * appear), [u] is the lateral position where -1 and 1 are the road edges.
  */
-class Obstacle(var d: Float, val u: Float, val kind: ObstacleKind)
-
-/** A neon building beside the road. [side] is -1 for left, 1 for right. Sizes are in road units. */
-class Pillar(var d: Float, val side: Int, val height: Float, val width: Float, val palette: Int)
+class Obstacle(var d: Float, val u: Float, val kind: ObstacleKind) {
+    /** A boost pad fires once; it stays visible while it passes under the marble. */
+    var consumed: Boolean = false
+}
 
 sealed interface GameEvent {
     data class Collected(val u: Float, val d: Float) : GameEvent
     data class Crashed(val u: Float, val d: Float) : GameEvent
+    data object Boosted : GameEvent
 }
 
 /**
@@ -33,6 +34,8 @@ class GameEngine(private val random: Random = Random(System.nanoTime())) {
         private set
     var marbleU: Float = 0f
         private set
+
+    /** Current speed in road units per second, boost included. */
     var speed: Float = IDLE_SPEED
         private set
     var distance: Float = 0f
@@ -51,22 +54,22 @@ class GameEngine(private val random: Random = Random(System.nanoTime())) {
     var gameOverTime: Float = 0f
         private set
 
+    /** Seconds of speed boost left after rolling over a boost pad. */
+    var boostTime: Float = 0f
+        private set
+
     val obstacles = ArrayList<Obstacle>()
-    val pillars = ArrayList<Pillar>()
 
     /** Events raised by the latest [update] call. Cleared at the start of the next one. */
     val events = ArrayList<GameEvent>()
 
     private var obstacleTravel = 0f
-    private var pillarTravel = 0f
 
-    init {
-        var d = NEAR
-        while (d < FAR) {
-            spawnPillars(d)
-            d += PILLAR_SPACING
-        }
-    }
+    /** Tests switch this off to run scripted scenarios without random waves getting in the way. */
+    internal var spawnEnabled = true
+
+    val isBoosting: Boolean
+        get() = boostTime > 0f
 
     val canRestart: Boolean
         get() = phase == Phase.GAME_OVER && gameOverTime >= RESTART_DELAY
@@ -74,9 +77,30 @@ class GameEngine(private val random: Random = Random(System.nanoTime())) {
     fun tap() {
         when (phase) {
             Phase.READY -> start()
+            Phase.PAUSED -> phase = Phase.PLAYING
             Phase.GAME_OVER -> if (canRestart) start()
             Phase.PLAYING -> Unit
         }
+    }
+
+    fun togglePause() {
+        phase = when (phase) {
+            Phase.PLAYING -> Phase.PAUSED
+            Phase.PAUSED -> Phase.PLAYING
+            else -> phase
+        }
+    }
+
+    /** Abandons the current run (the best score is kept) and shows the title screen. */
+    fun backToTitle() {
+        obstacles.clear()
+        marbleU = 0f
+        distance = 0f
+        orbs = 0
+        score = 0
+        boostTime = 0f
+        obstacleTravel = 0f
+        phase = Phase.READY
     }
 
     /** Moves the marble sideways by [deltaU] road units (positive = right). */
@@ -93,12 +117,15 @@ class GameEngine(private val random: Random = Random(System.nanoTime())) {
             }
             Phase.PLAYING -> {
                 elapsed += dt
-                speed = START_SPEED + (MAX_SPEED - START_SPEED) * min(1f, distance / FULL_SPEED_DISTANCE)
+                boostTime = (boostTime - dt).coerceAtLeast(0f)
+                val base = START_SPEED + (MAX_SPEED - START_SPEED) * difficulty()
+                speed = if (boostTime > 0f) min(base * BOOST_MULTIPLIER, BOOSTED_SPEED_CAP) else base
                 advance(dt)
                 score = (distance * DISTANCE_POINTS).toInt() + orbs * ORB_POINTS
                 spawnObstacles()
                 checkCollisions()
             }
+            Phase.PAUSED -> Unit
             Phase.GAME_OVER -> gameOverTime += dt
         }
     }
@@ -106,6 +133,8 @@ class GameEngine(private val random: Random = Random(System.nanoTime())) {
     internal fun addObstacle(obstacle: Obstacle) {
         obstacles += obstacle
     }
+
+    private fun difficulty(): Float = min(1f, distance / FULL_SPEED_DISTANCE)
 
     private fun start() {
         obstacles.clear()
@@ -116,6 +145,7 @@ class GameEngine(private val random: Random = Random(System.nanoTime())) {
         score = 0
         isNewBest = false
         gameOverTime = 0f
+        boostTime = 0f
         obstacleTravel = 0f
         phase = Phase.PLAYING
     }
@@ -123,32 +153,23 @@ class GameEngine(private val random: Random = Random(System.nanoTime())) {
     private fun advance(dt: Float) {
         val step = speed * dt
         distance += step
-
         for (o in obstacles) o.d -= step
-        obstacles.removeAll { it.d < NEAR * 0.5f }
-
-        for (p in pillars) p.d -= step
-        pillars.removeAll { it.d < PILLAR_DESPAWN_D }
-        pillarTravel += step
-        while (pillarTravel >= PILLAR_SPACING) {
-            pillarTravel -= PILLAR_SPACING
-            spawnPillars(FAR)
-        }
-
+        obstacles.removeAll { it.d < DESPAWN_D }
         obstacleTravel += step
     }
 
     private fun spawnObstacles() {
-        val difficulty = (speed - START_SPEED) / (MAX_SPEED - START_SPEED)
-        val gap = MAX_WAVE_GAP - (MAX_WAVE_GAP - MIN_WAVE_GAP) * difficulty
+        if (!spawnEnabled) return
+        val gap = MAX_WAVE_GAP - (MAX_WAVE_GAP - MIN_WAVE_GAP) * difficulty()
         if (obstacleTravel < gap) return
         obstacleTravel = 0f
 
         val lanes = LANES.indices.shuffled(random)
         val roll = random.nextFloat()
         when {
-            roll < 0.25f -> obstacles += Obstacle(FAR, LANES[lanes[0]], ObstacleKind.ORB)
-            roll < 0.75f -> obstacles += Obstacle(FAR, LANES[lanes[0]], ObstacleKind.BARRIER)
+            roll < 0.12f -> obstacles += Obstacle(FAR, 0f, ObstacleKind.BOOST)
+            roll < 0.35f -> obstacles += Obstacle(FAR, LANES[lanes[0]], ObstacleKind.ORB)
+            roll < 0.78f -> obstacles += Obstacle(FAR, LANES[lanes[0]], ObstacleKind.BARRIER)
             else -> {
                 // Two lanes blocked, one lane free (sometimes with a reward in it).
                 obstacles += Obstacle(FAR, LANES[lanes[0]], ObstacleKind.BARRIER)
@@ -158,35 +179,24 @@ class GameEngine(private val random: Random = Random(System.nanoTime())) {
         }
     }
 
-    private fun spawnPillars(d: Float) {
-        for (side in SIDES) {
-            if (random.nextFloat() < 0.85f) {
-                pillars += Pillar(
-                    d = d + random.nextFloat() * 0.5f,
-                    side = side,
-                    height = 0.35f + random.nextFloat() * 0.8f,
-                    width = 0.25f + random.nextFloat() * 0.3f,
-                    palette = random.nextInt(3),
-                )
-            }
-        }
-    }
-
     private fun checkCollisions() {
         val iterator = obstacles.iterator()
         while (iterator.hasNext()) {
             val o = iterator.next()
             if (abs(o.d - MARBLE_D) > HIT_WINDOW) continue
-            val reach = MARBLE_HALF_U + if (o.kind == ObstacleKind.BARRIER) BARRIER_HALF_U else ORB_HALF_U
-            if (abs(o.u - marbleU) >= reach) continue
             when (o.kind) {
-                ObstacleKind.ORB -> {
+                ObstacleKind.BOOST -> if (!o.consumed) {
+                    o.consumed = true
+                    boostTime = BOOST_DURATION
+                    events += GameEvent.Boosted
+                }
+                ObstacleKind.ORB -> if (abs(o.u - marbleU) < MARBLE_HALF_U + ORB_HALF_U) {
                     iterator.remove()
                     orbs++
                     score += ORB_POINTS
                     events += GameEvent.Collected(o.u, o.d)
                 }
-                ObstacleKind.BARRIER -> {
+                ObstacleKind.BARRIER -> if (abs(o.u - marbleU) < MARBLE_HALF_U + BARRIER_HALF_U) {
                     crash(o)
                     return
                 }
@@ -197,6 +207,8 @@ class GameEngine(private val random: Random = Random(System.nanoTime())) {
     private fun crash(o: Obstacle) {
         phase = Phase.GAME_OVER
         gameOverTime = 0f
+        boostTime = 0f
+        speed = 0f
         if (score > best) {
             best = score
             isNewBest = true
@@ -206,26 +218,27 @@ class GameEngine(private val random: Random = Random(System.nanoTime())) {
 
     companion object {
         const val NEAR = 1f
-        const val FAR = 10f
-        const val MARBLE_D = 1.6f
-        const val MARBLE_HALF_U = 0.1f
+        const val FAR = 11f
+        const val MARBLE_D = 3f
+        const val DESPAWN_D = 0.4f
+        const val MARBLE_HALF_U = 0.21f
         const val BARRIER_HALF_U = 0.17f
         const val ORB_HALF_U = 0.11f
-        const val MAX_U = 0.8f
-        const val IDLE_SPEED = 1.2f
-        const val START_SPEED = 3f
-        const val MAX_SPEED = 9f
+        const val MAX_U = 0.52f
+        const val IDLE_SPEED = 1.5f
+        const val START_SPEED = 3.2f
+        const val MAX_SPEED = 8.5f
+        const val BOOST_MULTIPLIER = 1.6f
+        const val BOOSTED_SPEED_CAP = 12f
+        const val BOOST_DURATION = 2.2f
         const val FULL_SPEED_DISTANCE = 600f
         const val RESTART_DELAY = 0.7f
         const val ORB_POINTS = 50
         const val DISTANCE_POINTS = 10f
-        const val PILLAR_SPACING = 1.5f
-        const val PILLAR_DESPAWN_D = 0.3f
         val LANES = floatArrayOf(-0.55f, 0f, 0.55f)
 
-        private const val HIT_WINDOW = 0.28f
-        private const val MAX_WAVE_GAP = 2.6f
-        private const val MIN_WAVE_GAP = 1.5f
-        private val SIDES = intArrayOf(-1, 1)
+        private const val HIT_WINDOW = 0.35f
+        private const val MAX_WAVE_GAP = 2.8f
+        private const val MIN_WAVE_GAP = 1.6f
     }
 }
