@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Fallback launcher icon for API 24-25, where adaptive icons are not supported. -->
+<!-- Fallback launcher icon for API 24-25, generated from PetSprites.WALK_A. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="48dp"
     android:height="48dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillColor="#4C508F"
+        android:fillColor="#D7F3D0"
         android:pathData="M0,0h108v108h-108z" />
     <path
-        android:fillColor="#9296E8"
-        android:pathData="M0,18h108v6h-108z" />
+        android:fillColor="#B6E3A8"
+        android:pathData="M0,67.75h108v40.25h-108z" />
     <path
-        android:fillColor="#000000"
-        android:pathData="M0,0h108v18h-108z" />
+        android:fillColor="#2B7A3A"
+        android:pathData="M44,45.25h2.5v2.5h-2.5zM54,45.25h2.5v2.5h-2.5zM39,47.75h2.5v2.5h-2.5zM59,47.75h2.5v2.5h-2.5zM44,50.25h2.5v2.5h-2.5zM54,50.25h2.5v2.5h-2.5zM29,52.75h2.5v2.5h-2.5zM39,52.75h2.5v2.5h-2.5zM64,52.75h2.5v2.5h-2.5zM71.5,52.75h2.5v2.5h-2.5zM29,55.25h2.5v2.5h-2.5zM46.5,55.25h2.5v2.5h-2.5zM56.5,55.25h2.5v2.5h-2.5zM69,55.25h2.5v2.5h-2.5zM31.5,57.75h40v2.5h-40z" />
     <path
-        android:fillColor="#1FFFFF"
-        android:pathData="M0,96l54,-16l54,16v8l-54,-16l-54,16z" />
+        android:fillColor="#3FA34D"
+        android:pathData="M41.5,42.75h20v2.5h-20zM36.5,45.25h7.5v2.5h-7.5zM46.5,45.25h7.5v2.5h-7.5zM56.5,45.25h10v2.5h-10zM34,47.75h5v2.5h-5zM41.5,47.75h17.5v2.5h-17.5zM61.5,47.75h7.5v2.5h-7.5zM31.5,50.25h12.5v2.5h-12.5zM46.5,50.25h7.5v2.5h-7.5zM56.5,50.25h15v2.5h-15zM31.5,52.75h7.5v2.5h-7.5zM41.5,52.75h22.5v2.5h-22.5zM66.5,52.75h5v2.5h-5zM31.5,55.25h15v2.5h-15zM49,55.25h7.5v2.5h-7.5zM59,55.25h10v2.5h-10z" />
     <path
-        android:fillColor="#551FFFFF"
-        android:pathData="M54,54m-30,0a30,30 0 1,0 60,0a30,30 0 1,0 -60,0" />
+        android:fillColor="#72D672"
+        android:pathData="M41.5,40.25h17.5v2.5h-17.5zM36.5,42.75h5v2.5h-5zM61.5,42.75h5v2.5h-5zM34,45.25h2.5v2.5h-2.5zM66.5,45.25h2.5v2.5h-2.5zM31.5,47.75h2.5v2.5h-2.5zM69,47.75h2.5v2.5h-2.5z" />
     <path
-        android:fillColor="#E31FA8"
-        android:pathData="M54,54m-24,0a24,24 0 1,0 48,0a24,24 0 1,0 -48,0" />
+        android:fillColor="#8CC04B"
+        android:pathData="M26.5,60.25h5v2.5h-5zM34,60.25h10v2.5h-10zM59,60.25h10v2.5h-10zM76.5,60.25h5v2.5h-5zM29,62.75h2.5v2.5h-2.5zM34,62.75h10v2.5h-10zM59,62.75h10v2.5h-10zM74,62.75h5v2.5h-5zM34,65.25h7.5v2.5h-7.5zM61.5,65.25h7.5v2.5h-7.5z" />
     <path
-        android:fillColor="#7A0E60"
-        android:pathData="M30,54a24,24 0 0,0 48,0a30,18 0 0,1 -48,0z" />
+        android:fillColor="#B9E66E"
+        android:pathData="M76.5,52.75h5v2.5h-5zM71.5,55.25h5v2.5h-5zM79,55.25h2.5v2.5h-2.5zM71.5,57.75h10v2.5h-10zM71.5,60.25h5v2.5h-5z" />
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M44,43m-6,0a6,6 0 1,0 12,0a6,6 0 1,0 -12,0" />
+        android:fillColor="#1E1E1E"
+        android:pathData="M76.5,55.25h2.5v2.5h-2.5z" />
 </vector>

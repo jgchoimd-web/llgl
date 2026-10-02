@@ -1,16 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">llgl</string>
-    <string name="game_title">NEON DESCENT</string>
-    <string name="game_subtitle">사이버펑크 도시의 내리막을 구슬로 질주하세요</string>
-    <string name="tap_to_start">화면을 탭해서 시작</string>
-    <string name="how_to_play">좌우로 드래그해 구슬을 조종하세요\n블록은 피하고, 네온 오브는 +50점\n시안 화살표를 밟으면 부스터!</string>
-    <string name="score_label">점수</string>
-    <string name="best_label">최고</string>
-    <string name="game_over">충돌!</string>
-    <string name="new_best">최고 기록 갱신!</string>
-    <string name="tap_to_retry">탭해서 다시 시작</string>
-    <string name="paused">일시정지</string>
-    <string name="tap_to_resume">탭해서 계속</string>
-    <string name="speed_up">SPEED UP!</string>
+    <string name="app_name">거북이 펫</string>
+    <string name="default_pet_name">꼬북</string>
+
+    <!-- Setup screen -->
+    <string name="setup_title">홈 화면에 사는 거북이</string>
+    <string name="setup_intro">%1$s(이)가 홈 화면과 다른 앱 위를 느릿느릿 돌아다닙니다. 탭하면 놀라서 숨고, 길게 누르면 상추를 줄 수 있어요.</string>
+    <string name="name_label">거북이 이름</string>
+    <string name="permission_overlay_title">1. 다른 앱 위에 표시</string>
+    <string name="permission_overlay_desc">거북이가 홈 화면 위에 보이려면 이 권한이 필요합니다. 일부 기기(Android Go)는 이 권한을 줄 수 없습니다.</string>
+    <string name="permission_overlay_button">권한 설정 열기</string>
+    <string name="permission_granted">허용됨</string>
+    <string name="permission_notifications_title">2. 알림 허용</string>
+    <string name="permission_notifications_desc">거북이가 돌아다니는 동안 작은 알림이 떠 있고, 거기서 일시정지하거나 종료할 수 있습니다.</string>
+    <string name="permission_notifications_button">알림 허용</string>
+    <string name="start_pet">펫 시작</string>
+    <string name="stop_pet">펫 중지</string>
+    <string name="pet_running">%1$s 산책 중</string>
+    <string name="pet_stopped">%1$s 쉬는 중</string>
+    <string name="stats_title">상태</string>
+    <string name="stat_fullness">배부름</string>
+    <string name="stat_happiness">행복</string>
+    <string name="tips_title">알아두기</string>
+    <string name="tips_body">• 잠금 화면에서는 보이지 않고, 화면이 꺼지면 쉽니다.\n• 거북이가 버튼을 가리면 알림에서 잠시 일시정지하세요.\n• 밤 11시부터 아침 7시까지는 잠을 잡니다. 깨우면 투덜거려요.\n• 배부름과 행복은 앱을 꺼 두어도 천천히 변합니다.</string>
+
+    <!-- Notification -->
+    <string name="notification_channel">거북이 펫</string>
+    <string name="notification_text">탭하면 설정이 열립니다</string>
+    <string name="notification_pause">일시정지</string>
+    <string name="notification_resume">계속</string>
+    <string name="notification_stop">종료</string>
+
+    <!-- Overlay menu -->
+    <string name="menu_feed">상추 주기</string>
+    <string name="menu_pet">쓰다듬기</string>
+    <string name="menu_settings">설정</string>
+    <string name="menu_close">닫기</string>
+
+    <!-- Speech bubbles -->
+    <string name="line_morning">좋은 아침! ☀️</string>
+    <string name="line_lunch">점심은 먹었어?</string>
+    <string name="line_evening">오늘도 수고했어</string>
+    <string name="line_sleepy">으음… 졸려…</string>
+    <string name="line_hungry">배고파…</string>
+    <string name="line_full">배불러~</string>
+    <string name="line_yum">냠냠! 고마워</string>
+    <string name="line_bored">심심해…</string>
+    <string name="line_happy">오늘 기분 최고!</string>
+    <string name="line_startled">앗, 깜짝이야!</string>
+    <string name="line_petted">헤헤, 좋아</string>
+    <string name="line_landed">휴, 착지!</string>
+    <string name="line_zzz">zzz…</string>
+    <string name="line_idle_1">느긋하게 산책 중</string>
+    <string name="line_idle_2">상추 먹고 싶다</string>
+    <string name="line_idle_3">오늘 날씨 어때?</string>
+    <string name="line_idle_4">거북이는 원래 느려</string>
+    <string name="line_idle_5">여기 햇볕 좋다</string>
 </resources>

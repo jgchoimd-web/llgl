@@ -4,20 +4,10 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- slab -->
     <path
-        android:fillColor="#4C508F"
+        android:fillColor="#D7F3D0"
         android:pathData="M0,0h108v108h-108z" />
-    <!-- lit far edge -->
     <path
-        android:fillColor="#9296E8"
-        android:pathData="M0,18h108v6h-108z" />
-    <!-- black sky above the lip -->
-    <path
-        android:fillColor="#000000"
-        android:pathData="M0,0h108v18h-108z" />
-    <!-- cyan boost chevron -->
-    <path
-        android:fillColor="#1FFFFF"
-        android:pathData="M0,96l54,-16l54,16v8l-54,-16l-54,16z" />
+        android:fillColor="#B6E3A8"
+        android:pathData="M0,67.75h108v40.25h-108z" />
 </vector>

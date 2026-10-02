@@ -1,7 +1,7 @@
-# llgl — NEON DESCENT
+# llgl — 거북이 펫
 
-구슬이 사이버펑크 도시의 내리막길을 굴러 내려가는 안드로이드 게임입니다.
-Kotlin + Jetpack Compose로 만들었고, 게임 엔진 없이 Compose `Canvas`로 직접 그립니다.
+안드로이드 홈 화면(과 다른 앱) 위를 느릿느릿 돌아다니는 픽셀 아트 거북이 "꼬북"입니다.
+Kotlin + Jetpack Compose로 만들었고, 거북이는 "다른 앱 위에 표시" 권한으로 띄우는 작은 오버레이 창 안에서 삽니다.
 
 | 항목 | 값 |
 |---|---|
@@ -10,16 +10,20 @@ Kotlin + Jetpack Compose로 만들었고, 게임 엔진 없이 Compose `Canvas`�
 | 언어 · UI | Kotlin · Jetpack Compose (Material 3) |
 | 빌드 | Android Gradle Plugin 9.4, Gradle 9.8 (wrapper) |
 
-## 게임 방법
+## 거북이가 하는 일
 
-- 화면을 **탭**하면 시작합니다.
-- 화면을 **좌우로 드래그**해 마젠타 구슬을 조종합니다. 손가락을 따라 구슬이 1:1로 움직입니다.
-- 핑크 테두리 **블록**에 부딪히면 끝. 시안 **네온 오브**를 지나가면 +50점.
-- 도로를 가로지르는 시안 **화살표(부스터 패드)**를 밟으면 잠시 속도가 1.6배가 됩니다. 거리 점수가 빨리 오르는 대신 반응할 시간이 짧아집니다.
-- 내려갈수록 속도가 빨라지고 블록 간격이 좁아집니다. 점수는 거리 + 오브로 계산되고, 최고 기록은 기기에 저장됩니다.
-- 오른쪽 위 **일시정지** 버튼으로 멈추고, 왼쪽 위 **뒤로** 버튼으로 타이틀로 돌아갑니다. 충돌 후 잠깐 뒤에 탭하면 다시 시작합니다.
+- 화면 아래를 천천히 걷다가 멈춰서 두리번거리고, 가끔 등껍질에 들어갑니다.
+- **탭**하면 놀라서 껍질에 숨었다가 나옵니다. **길게 누르면** 메뉴가 뜹니다: 🥬 상추 주기 · ✋ 쓰다듬기 · ⚙️ 설정 · ✕ 닫기.
+- **드래그**하면 들어 올려 옮길 수 있고(다리를 버둥거림), 놓으면 바닥으로 떨어져 다시 걷습니다.
+- 상추를 주면 걸어가서 먹습니다. **배부름**과 **행복**은 앱을 꺼 두어도 실제 시간에 따라 천천히 변하고 기기에 저장됩니다. 배부르면 거절해요.
+- 가끔 말풍선으로 한마디 합니다(배고프면 "배고파…", 점심·저녁 인사 등). **밤 11시~아침 7시**에는 잠을 자고, 깨우면 투덜댑니다. 아침엔 인사를 합니다.
+- 잠금 화면에서는 보이지 않고, 화면이 꺼지면 애니메이션을 멈춰 배터리를 아낍니다. 알림에서 일시정지·종료할 수 있습니다.
 
-비주얼은 검은 하늘 아래 넓은 인디고 슬라브 도로, 와이어프레임 큐브 도시, 시안 쉐브론 부스터 패드, 흰색 원형 버튼과 외곽선 있는 굵은 글씨로 구성됩니다.
+## 설치하고 시작하기
+
+1. APK를 설치하고 앱을 엽니다. ("출처를 알 수 없는 앱" 허용 필요)
+2. **1. 다른 앱 위에 표시** → 권한 설정 열기 → 허용. (Android 13 이상이면 **2. 알림 허용**도 눌러 주세요.)
+3. **펫 시작**을 누르면 거북이가 홈 화면 아래에 나타납니다. 이름은 설정 화면에서 바꿀 수 있습니다.
 
 ## 빌드하기
 
@@ -37,39 +41,27 @@ bash scripts/setup-android-sdk.sh
 ./gradlew testDebugUnitTest lintDebug
 ```
 
-SDK를 다른 곳에 설치하려면 `ANDROID_HOME=/원하는/경로 bash scripts/setup-android-sdk.sh`처럼
-실행하세요. 스크립트는 Gradle이 SDK를 찾을 수 있도록 `local.properties`(git 추적 제외)도 만들어 줍니다.
+SDK를 다른 곳에 설치하려면 `ANDROID_HOME=/원하는/경로 bash scripts/setup-android-sdk.sh`처럼 실행하세요.
+스크립트는 Gradle이 SDK를 찾을 수 있도록 `local.properties`(git 추적 제외)도 만들어 줍니다.
+Android Studio를 쓴다면 이 폴더를 그대로 열면 됩니다.
 
-Android Studio를 쓴다면 이 폴더를 그대로 열면 됩니다. Studio가 SDK를 관리하므로 스크립트는 필요 없습니다.
+디버그 APK는 저장소에 들어 있는 `app/debug.keystore`로 서명됩니다. 어느 컴퓨터(또는 CI)에서 빌드하든
+서명이 같아서 이미 설치된 앱 위에 덮어 설치됩니다. 스토어 배포용 키는 아닙니다.
 
-디버그 APK는 저장소에 들어 있는 `app/debug.keystore`로 서명됩니다. 어느 컴퓨터(또는 CI)에서
-빌드하든 서명이 같아서, 이미 설치된 앱 위에 덮어 설치(업데이트)가 됩니다. 스토어 배포용 키는 아닙니다.
+push마다 GitHub Actions가 디버그 APK를 빌드해 **Actions → Android CI → Artifacts → `app-debug`**에 올립니다.
 
-## 폰에 설치하기
+## 동작 원리
 
-이 저장소는 push마다 GitHub Actions가 디버그 APK를 빌드해 아티팩트로 올립니다.
+- `pet/PetBrain.kt` — 순수 Kotlin 상태 기계(걷기·대기·숨기·잠·먹기·들림·낙하), 배고픔/행복 수치, 말풍선 선택.
+  시계와 난수를 주입받아 JVM 단위 테스트로 검증합니다.
+- `pet/PetSprites.kt` — 24×16 픽셀 프레임을 문자 그리드로 정의. 걷기 2, 깜빡임, 숨기 2, 잠 2, 먹기 3, 들림 2 프레임과 상추.
+- `pet/OverlayWindow.kt` — `TYPE_APPLICATION_OVERLAY` 창을 거북이 크기만큼만 띄워 홈 화면 터치를 가리지 않습니다.
+  말풍선·메뉴·상추가 있을 때만 창이 위로 커집니다. 드래그는 화면 raw 좌표로 계산합니다.
+- `pet/OverlayHost.kt` — 서비스 창 안에서 Compose가 돌도록 Lifecycle/SavedState owner를 제공합니다.
+  화면이 꺼지면 lifecycle을 내려 Compose 프레임 클럭을 멈춥니다.
+- `pet/PetService.kt` — `specialUse` 포그라운드 서비스. 알림 액션(일시정지/계속/종료), 화면 꺼짐 수신, 상태 저장.
+- `MainActivity.kt` — 설정 화면: 이름, 권한 안내, 시작/중지, 배부름·행복 게이지.
 
-1. GitHub 저장소의 **Actions** 탭 → 최신 **Android CI** 실행 → 하단 **Artifacts**에서 `app-debug` 다운로드
-2. 압축을 풀어 나온 `app-debug.apk`를 폰으로 옮긴 뒤(카카오톡 나에게 보내기, Google Drive 등) 탭해서 설치
-3. "출처를 알 수 없는 앱" 설치 허용을 물으면 허용
+## 기기에서 확인할 것 (이 저장소의 CI는 기기 없이 빌드·테스트·lint만 합니다)
 
-USB 디버깅이 켜진 폰이 연결되어 있다면 `adb install app/build/outputs/apk/debug/app-debug.apk`로도 설치할 수 있습니다.
-
-## 프로젝트 구조
-
-```
-app/src/main/java/com/llgl/app/
-├── MainActivity.kt            # 진입점. 전체 화면 + 화면 꺼짐 방지, GameScreen 표시
-├── game/
-│   ├── GameEngine.kt          # 순수 Kotlin 게임 로직 (장애물 생성, 충돌, 점수, 속도). Android 의존성 없음
-│   ├── Camera.kt              # 도로 좌표(거리 d, 좌우 u) → 화면 좌표 1/d 원근 투영
-│   └── GameScreen.kt          # Compose Canvas 렌더링(하늘, 스카이라인, 도로, 건물, 구슬, 파티클)과 HUD, 입력
-└── ui/theme/Theme.kt          # Material 3 테마
-app/src/test/                  # JVM 단위 테스트 (GameEngineTest, CameraTest)
-gradle/libs.versions.toml      # 의존성 버전 카탈로그
-scripts/setup-android-sdk.sh   # Android SDK 설치 스크립트
-.github/workflows/android.yml  # CI: 빌드 + 테스트 + lint, APK 아티팩트 업로드
-```
-
-게임 로직(`GameEngine`)과 그리기(`GameScreen`)가 분리되어 있어서, 규칙을 바꾸고 싶으면
-엔진만 고치고 테스트로 확인한 뒤 빌드하면 됩니다.
+권한 흐름 → 펫 시작 → 걷기/탭/롱프레스 메뉴/드래그 → 알림 일시정지·종료 → 화면 회전 → 화면 끄고 켜기 → 밤 시간 수면.
