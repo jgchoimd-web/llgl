@@ -54,6 +54,9 @@ android {
     packaging {
         jniLibs {
             excludes += listOf("**/x86/**", "**/x86_64/**", "**/armeabi-v7a/**")
+            // Store the 27 MB inference library compressed and let the installer extract it: the APK
+            // drops from ~38 MB to well under 30 MB, which keeps sideloading and artifact limits happy.
+            useLegacyPackaging = true
         }
     }
 }
