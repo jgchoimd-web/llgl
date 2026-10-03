@@ -23,3 +23,4 @@ dependencyResolutionManagement {
 rootProject.name = "llgl"
 include(":app")
 include(":sandbox")
+include(":gameforge")

@@ -46,6 +46,13 @@ jobs:
           path: sandbox/build/outputs/apk/debug/sandbox-debug.apk
           if-no-files-found: error
 
+      - name: Upload debug APK (game maker)
+        uses: actions/upload-artifact@v4
+        with:
+          name: gameforge-debug
+          path: gameforge/build/outputs/apk/debug/gameforge-debug.apk
+          if-no-files-found: error
+
       - name: Upload test and lint reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -54,4 +61,5 @@ jobs:
           path: |
             app/build/reports/
             sandbox/build/reports/
+            gameforge/build/reports/
           if-no-files-found: ignore
