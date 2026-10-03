@@ -32,10 +32,10 @@ class VibeEngine(context: Context) {
     val minHz: Float
     val maxHz: Float
     val resonantHz: Float
-    private val envMaxSize: Int
-    private val envMinPointMs: Long
-    private val envMaxPointMs: Long
-    private val envMaxDurationMs: Long
+    val envMaxSize: Int
+    val envMinPointMs: Long
+    val envMaxPointMs: Long
+    val envMaxDurationMs: Long
 
     init {
         var env = false
@@ -126,6 +126,40 @@ class VibeEngine(context: Context) {
         if (!available) return
         val amp = Score.scaled(200, intensity)
         vibrate(waveform(longArrayOf(60L, 60L, 90L), intArrayOf(amp, 0, amp), -1))
+    }
+
+    /** Plays [segments] right now, once; the live mode calls this every window. Safe from any thread. */
+    fun playSegments(segments: Segments) {
+        if (!available) return
+        if (segments.isSilent) {
+            try {
+                vibrator?.cancel()
+            } catch (_: Exception) {
+            }
+            return
+        }
+        vibrate(waveform(segments.timings, segments.amplitudes, -1))
+    }
+
+    /** Plays a frequency envelope right now; false when the device cannot, so the caller falls back. */
+    fun playEnvelope(points: List<FreqPoint>): Boolean {
+        if (!envelopes || Build.VERSION.SDK_INT < 36 || points.isEmpty()) return false
+        if (points.all { it.amplitude <= 0f }) {
+            try {
+                vibrator?.cancel()
+            } catch (_: Exception) {
+            }
+            return true
+        }
+        return try {
+            val b = VibrationEffect.WaveformEnvelopeBuilder()
+            b.setInitialFrequencyHz(points.first().frequencyHz)
+            for (p in points) b.addControlPoint(p.amplitude, p.frequencyHz, p.durationMs.coerceIn(envMinPointMs, envMaxPointMs))
+            vibrate(b.build())
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /** Loops [segments] until [stop]. */

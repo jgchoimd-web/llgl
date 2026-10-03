@@ -53,7 +53,7 @@ import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryScreen(deps: Deps, onOpen: (Song) -> Unit, onNowPlaying: () -> Unit, onComposer: () -> Unit) {
+fun LibraryScreen(deps: Deps, onOpen: (Song) -> Unit, onNowPlaying: () -> Unit, onComposer: () -> Unit, onLive: () -> Unit) {
     val context = LocalContext.current
     var granted by remember { mutableStateOf(MusicLibrary.hasPermission(context)) }
     var songs by remember { mutableStateOf<List<Song>?>(null) }
@@ -129,6 +129,9 @@ fun LibraryScreen(deps: Deps, onOpen: (Song) -> Unit, onNowPlaying: () -> Unit, 
                         Text("진동이 약하면 시스템 설정 › 소리 및 진동 › ‘미디어 진동’을 올리세요.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
+            }
+            item {
+                Button(onClick = onLive, modifier = Modifier.fillMaxWidth()) { Text("🎧 실시간 모드 · 다른 앱의 소리를 진동으로") }
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

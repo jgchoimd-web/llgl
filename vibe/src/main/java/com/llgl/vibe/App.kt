@@ -7,12 +7,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.llgl.vibe.ui.ComposerScreen
 import com.llgl.vibe.ui.LibraryScreen
+import com.llgl.vibe.ui.LiveScreen
 import com.llgl.vibe.ui.PlayerScreen
 
 sealed interface Screen {
     data object Library : Screen
     data object Player : Screen
     data object Composer : Screen
+    data object Live : Screen
 }
 
 @Composable
@@ -30,10 +32,13 @@ fun VibeRoot(deps: Deps) {
                 deps.session.pause()
                 screen = Screen.Composer
             },
+            onLive = { screen = Screen.Live },
         )
 
         Screen.Player -> PlayerScreen(deps = deps, onBack = { screen = Screen.Library })
 
         Screen.Composer -> ComposerScreen(deps = deps, onBack = { screen = Screen.Library })
+
+        Screen.Live -> LiveScreen(deps = deps, onBack = { screen = Screen.Library })
     }
 }
