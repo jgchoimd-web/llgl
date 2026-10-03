@@ -34,8 +34,3 @@ private val Scheme = darkColorScheme(
 fun VibeTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = Scheme, content = content)
 }
-
-fun formatTime(ms: Long): String {
-    val s = (ms / 1000).coerceAtLeast(0)
-    return "%d:%02d".format(s / 60, s % 60)
-}

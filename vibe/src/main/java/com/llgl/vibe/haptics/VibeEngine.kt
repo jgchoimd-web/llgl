@@ -2,20 +2,16 @@ package com.llgl.vibe.haptics
 
 import android.content.Context
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import com.llgl.vibe.analysis.HapticTrack
-import kotlin.math.min
 
 /**
- * Drives the vibration motor from a [HapticTrack] in step with a clock the caller provides
- * (the audio position). Issues the pattern in 15-second chunks and re-reads the clock at every
- * chunk, so audio and motor cannot drift apart. On Android 16 with a capable motor, MELODY mode
- * sets the motor's frequency note by note; elsewhere every mode is an amplitude pattern.
+ * The vibration motor: what it can do, and one-shot effects for the live mode, which hands over a
+ * fresh effect every window. On Android 16 with a capable motor a frequency envelope plays real
+ * notes; elsewhere every mode is an amplitude waveform, and on very old phones an on/off pattern.
+ * Safe to call from any thread.
  */
 class VibeEngine(context: Context) {
     private val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -87,68 +83,36 @@ class VibeEngine(context: Context) {
         else -> "켜기/끄기만 가능한 모터 (세기 조절 없음)"
     }
 
-    var intensity: Float = 1f
-    var mode: Mode = Mode.FULL
-
-    private val handler = Handler(Looper.getMainLooper())
-    private var track: HapticTrack? = null
-    private var clock: (() -> Int)? = null
-    private var ampsFor: Mode? = null
-    private var amps: IntArray? = null
-    private val next = Runnable { issue() }
-
-    val running: Boolean get() = track != null
-
-    /** Starts following [clock] (ms into [track]); call again after a seek, or [resync]. */
-    fun play(track: HapticTrack, clock: () -> Int) {
-        this.track = track
-        this.clock = clock
-        amps = null
-        issue()
-    }
-
-    fun resync() {
-        if (track != null) issue()
-    }
-
+    /** Cancels whatever is playing. */
     fun stop() {
-        handler.removeCallbacks(next)
-        track = null
-        clock = null
         try {
             vibrator?.cancel()
         } catch (_: Exception) {
         }
     }
 
-    /** A short buzz so the user can feel the current intensity. */
-    fun preview() {
+    /** A short double buzz so the user can feel [intensity]. */
+    fun preview(intensity: Float) {
         if (!available) return
         val amp = Score.scaled(200, intensity)
-        vibrate(waveform(longArrayOf(60L, 60L, 90L), intArrayOf(amp, 0, amp), -1))
+        vibrate(waveform(longArrayOf(60L, 60L, 90L), intArrayOf(amp, 0, amp)))
     }
 
-    /** Plays [segments] right now, once; the live mode calls this every window. Safe from any thread. */
+    /** Plays [segments] right now, once; the live mode calls this every window. */
     fun playSegments(segments: Segments) {
         if (!available) return
         if (segments.isSilent) {
-            try {
-                vibrator?.cancel()
-            } catch (_: Exception) {
-            }
+            stop()
             return
         }
-        vibrate(waveform(segments.timings, segments.amplitudes, -1))
+        vibrate(waveform(segments.timings, segments.amplitudes))
     }
 
     /** Plays a frequency envelope right now; false when the device cannot, so the caller falls back. */
     fun playEnvelope(points: List<FreqPoint>): Boolean {
         if (!envelopes || Build.VERSION.SDK_INT < 36 || points.isEmpty()) return false
         if (points.all { it.amplitude <= 0f }) {
-            try {
-                vibrator?.cancel()
-            } catch (_: Exception) {
-            }
+            stop()
             return true
         }
         return try {
@@ -162,74 +126,11 @@ class VibeEngine(context: Context) {
         }
     }
 
-    /** Loops [segments] until [stop]. */
-    fun loop(segments: Segments) {
-        handler.removeCallbacks(next)
-        track = null
-        if (!available || segments.isSilent) {
-            try {
-                vibrator?.cancel()
-            } catch (_: Exception) {
-            }
-            return
-        }
-        vibrate(waveform(segments.timings, segments.amplitudes, 0))
-    }
-
-    private fun issue() {
-        handler.removeCallbacks(next)
-        val t = track ?: return
-        val from = (clock?.invoke() ?: return).toLong().coerceAtLeast(0L)
-        val chunk = if (mode == Mode.MELODY && envelopes) min(CHUNK_MS, envMaxDurationMs) else CHUNK_MS
-        val to = min(t.durationMs, from + chunk)
-        if (to <= from) {
-            try {
-                vibrator?.cancel()
-            } catch (_: Exception) {
-            }
-            return
-        }
-        val effect = if (mode == Mode.MELODY && envelopes) envelope(t, from, to) else amplitudeEffect(t, from, to)
-        if (effect == null) {
-            try {
-                vibrator?.cancel()
-            } catch (_: Exception) {
-            }
-        } else {
-            vibrate(effect)
-        }
-        handler.postDelayed(next, (to - from - LEAD_MS).coerceAtLeast(200L))
-    }
-
-    private fun amplitudeEffect(t: HapticTrack, from: Long, to: Long): Any? {
-        if (ampsFor != mode || amps == null) {
-            amps = Score.amplitudes(t, mode)
-            ampsFor = mode
-        }
-        val s = Score.segments(amps!!, t.hopMs, from, to, intensity)
-        if (s.isSilent) return null
-        return waveform(s.timings, s.amplitudes, -1)
-    }
-
-    private fun envelope(t: HapticTrack, from: Long, to: Long): Any? {
-        if (Build.VERSION.SDK_INT < 36) return null
-        val points = Score.envelope(t, from, to, intensity, minHz, maxHz, envMinPointMs, envMaxPointMs, envMaxSize)
-        if (points.isEmpty() || points.all { it.amplitude <= 0f }) return null
-        return try {
-            val b = VibrationEffect.WaveformEnvelopeBuilder()
-            b.setInitialFrequencyHz(points.first().frequencyHz)
-            for (p in points) b.addControlPoint(p.amplitude, p.frequencyHz, p.durationMs)
-            b.build()
-        } catch (_: Exception) {
-            amplitudeEffect(t, from, to)
-        }
-    }
-
-    /** A waveform effect, or on very old phones the on/off pattern that stands in for it. */
-    private fun waveform(timings: LongArray, amplitudes: IntArray, repeat: Int): Any {
+    /** A one-shot waveform effect, or on very old phones the on/off pattern that stands in for it. */
+    private fun waveform(timings: LongArray, amplitudes: IntArray): Any {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val amps = if (amplitudeControl) amplitudes else IntArray(amplitudes.size) { if (amplitudes[it] >= 90) 255 else 0 }
-            return VibrationEffect.createWaveform(timings, amps, repeat)
+            return VibrationEffect.createWaveform(timings, amps, -1)
         }
         // Legacy: off/on pairs. Build [off, on, off, on, ...] from the steps.
         val pattern = ArrayList<Long>()
@@ -247,26 +148,21 @@ class VibeEngine(context: Context) {
             }
         }
         pattern += acc
-        return LegacyPattern(pattern.toLongArray(), repeat)
+        return LegacyPattern(pattern.toLongArray())
     }
 
-    private class LegacyPattern(val pattern: LongArray, val repeat: Int)
+    private class LegacyPattern(val pattern: LongArray)
 
     private fun vibrate(effect: Any) {
         val v = vibrator ?: return
         try {
             when {
-                effect is LegacyPattern -> @Suppress("DEPRECATION") v.vibrate(effect.pattern, effect.repeat)
+                effect is LegacyPattern -> @Suppress("DEPRECATION") v.vibrate(effect.pattern, -1)
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
                     v.vibrate(effect as VibrationEffect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_MEDIA))
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> v.vibrate(effect as VibrationEffect)
             }
         } catch (_: Exception) {
         }
-    }
-
-    private companion object {
-        const val CHUNK_MS = 15_000L
-        const val LEAD_MS = 250L
     }
 }

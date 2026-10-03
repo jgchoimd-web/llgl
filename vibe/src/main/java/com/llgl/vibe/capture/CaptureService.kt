@@ -24,7 +24,9 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
 import com.llgl.vibe.MainActivity
+import com.llgl.vibe.Prefs
 import com.llgl.vibe.R
+import com.llgl.vibe.VibeApp
 import com.llgl.vibe.analysis.LiveAnalyzer
 import com.llgl.vibe.haptics.LiveScore
 import com.llgl.vibe.haptics.Mode
@@ -32,14 +34,15 @@ import com.llgl.vibe.haptics.VibeEngine
 import kotlin.math.max
 
 /**
- * Live mode: captures what other apps play (AudioPlaybackCapture, Android 10+), analyses it block
- * by block and drives the motor in 100 ms windows. A media-projection foreground service, so the
- * capture and the vibration are allowed while another app is on screen. Muting is the media
- * volume set to zero, restored when the mode stops; the capture taps each player's own stream
- * before the volume is applied, so it keeps hearing at full level.
+ * Captures what other apps play (AudioPlaybackCapture, Android 10+), analyses it block by block
+ * and drives the motor in 100 ms windows. A media-projection foreground service, so the capture
+ * and the vibration are allowed while another app is on screen. Muting is the media volume set to
+ * zero, restored when the mode stops; the capture taps each player's own stream before the volume
+ * is applied, so it keeps hearing at full level.
  */
 class CaptureService : Service() {
     private lateinit var engine: VibeEngine
+    private lateinit var prefs: Prefs
     private lateinit var audio: AudioManager
     private var projection: MediaProjection? = null
     private var record: AudioRecord? = null
@@ -54,7 +57,9 @@ class CaptureService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        engine = VibeEngine(this)
+        val deps = (application as VibeApp).deps
+        engine = deps.engine
+        prefs = deps.prefs
         audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         channel()
     }
@@ -64,7 +69,9 @@ class CaptureService : Service() {
             ACTION_STOP -> stopEverything()
             ACTION_TOGGLE_MUTE -> {
                 if (running) {
-                    LiveState.update { it.copy(muted = !it.muted) }
+                    val muted = !LiveState.value.muted
+                    LiveState.update { it.copy(muted = muted) }
+                    prefs.muted = muted
                     applyMute()
                     refreshNotification()
                 } else {
@@ -309,7 +316,7 @@ class CaptureService : Service() {
         val stop = PendingIntent.getService(this, 2, Intent(this, CaptureService::class.java).setAction(ACTION_STOP), flags)
         return NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_vibe)
-            .setContentTitle("실시간 진동 켜짐")
+            .setContentTitle("진동 뮤직 켜짐")
             .setContentText("${live.mode.label} · ${if (live.muted) "소리 끔" else "소리 켬"} · 다른 앱의 소리를 진동으로")
             .setOngoing(true)
             .setContentIntent(open)

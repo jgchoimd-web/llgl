@@ -1,12 +1,12 @@
 package com.llgl.vibe
 
 import android.app.Application
-import com.llgl.vibe.player.Session
+import com.llgl.vibe.capture.LiveState
+import com.llgl.vibe.haptics.VibeEngine
 
 class Deps(app: Application) {
     val prefs = Prefs(app)
-    val cache = AnalysisCache(app)
-    val session = Session(app, prefs, cache)
+    val engine = VibeEngine(app)
 }
 
 class VibeApp : Application() {
@@ -16,5 +16,7 @@ class VibeApp : Application() {
     override fun onCreate() {
         super.onCreate()
         deps = Deps(this)
+        val prefs = deps.prefs
+        LiveState.update { it.copy(mode = prefs.mode, intensity = prefs.intensity, muted = prefs.muted) }
     }
 }

@@ -3,13 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.VIBRATE" />
-    <!-- Listing the phone's music: the media permission on Android 13+, storage below. -->
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
-    <!-- Live mode: capturing what other apps play needs the audio-capture permission plus a
-         media-projection foreground service (and a notification to show it is running). -->
+    <!-- Capturing what other apps play needs the audio-capture permission plus a media-projection
+         foreground service (and a notification to show it is running). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
