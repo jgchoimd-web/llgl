@@ -208,6 +208,7 @@ class CaptureService : Service() {
             for (i in shorts.indices) floats[i] = shorts[i] / 32768f
             val frame = analyzer.feed(floats) ?: continue
             val live = LiveState.value
+            analyzer.suppressBackground = live.suppress
             score.mode = live.mode
             score.intensity = live.intensity
             if (lastMode != null && lastMode != live.mode) {

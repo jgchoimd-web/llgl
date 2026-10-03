@@ -8,7 +8,8 @@ enum class Mode(val label: String, val blurb: String) {
     RHYTHM("리듬", "비트마다 한 번씩 툭"),
     BASS("베이스", "저음 크기를 따라 웅웅"),
     MELODY("멜로디", "음높이를 따라 (주파수 제어 폰은 실제 음으로)"),
-    FULL("전부", "비트 + 베이스"),
+    VOICE("목소리", "말소리의 음절 하나하나를 또박또박"),
+    FULL("전부", "비트 + 베이스 + 목소리"),
 }
 
 /** Vibration on/strength steps, as `Vibrator.vibrate(createWaveform)` wants them. */

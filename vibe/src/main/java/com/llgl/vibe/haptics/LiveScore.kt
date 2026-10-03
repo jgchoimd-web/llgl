@@ -2,10 +2,11 @@ package com.llgl.vibe.haptics
 
 import com.llgl.vibe.analysis.LiveAnalyzer
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
-/** [Score] for frames that arrive one at a time: keeps the pulse, bass and tick state between calls. */
+/** Turns frames that arrive one at a time into vibration strength: keeps the pulse, bass, voice and tick state between calls. */
 class LiveScore {
     var mode: Mode = Mode.FULL
     var intensity: Float = 1f
@@ -14,11 +15,12 @@ class LiveScore {
     private var pulseLen = 1
     private var pulsePeak = 0f
     private var bassLevel = 0f
+    private var voiceLevel = 0f
     private var phase = 0f
 
     /** Vibration strength 0..255 for this frame under the current mode and intensity. */
     fun amplitude(f: LiveAnalyzer.Frame, hopMs: Float): Int {
-        // All three generators advance every frame so switching modes never starts from stale state.
+        // All generators advance every frame so switching modes never starts from stale state.
         if (f.beat) {
             pulseLen = 2 + (f.onset.coerceIn(0f, 1f) * 4f).roundToInt()
             pulseLeft = pulseLen
@@ -34,6 +36,12 @@ class LiveScore {
         val target = if (f.bass < 0.12f) 0f else f.bass.pow(0.8f)
         bassLevel = if (target >= bassLevel) target else max(target, bassLevel * 0.55f)
         val bass = 255f * bassLevel
+        // Voice: instant attack with the rise added on top, so consonants snap and every syllable
+        // starts with a distinct edge; release over about three frames so the gaps stay empty.
+        val vTarget = if (f.voice < 0.1f) 0f else f.voice.pow(0.7f)
+        val rise = max(0f, vTarget - voiceLevel)
+        voiceLevel = if (vTarget >= voiceLevel) vTarget else max(vTarget, voiceLevel * 0.6f)
+        val voice = 255f * min(1f, voiceLevel + 0.6f * rise)
         val melody: Float
         if (f.pitch <= 0f || f.loud < 0.08f) {
             phase = 0f
@@ -51,7 +59,8 @@ class LiveScore {
             Mode.RHYTHM -> rhythm
             Mode.BASS -> bass
             Mode.MELODY -> melody
-            Mode.FULL -> max(rhythm, bass * 0.65f)
+            Mode.VOICE -> voice
+            Mode.FULL -> max(rhythm, max(bass * 0.65f, voice * 0.6f))
         }
         return Score.scaled(raw.roundToInt(), intensity)
     }

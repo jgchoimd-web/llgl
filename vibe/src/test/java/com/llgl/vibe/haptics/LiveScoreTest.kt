@@ -6,8 +6,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LiveScoreTest {
-    private fun frame(loud: Float = 0.5f, bass: Float = 0f, onset: Float = 0f, beat: Boolean = false, pitch: Float = 0f) =
-        LiveAnalyzer.Frame(loud, bass, onset, beat, pitch)
+    private fun frame(loud: Float = 0.5f, bass: Float = 0f, onset: Float = 0f, beat: Boolean = false, pitch: Float = 0f, voice: Float = 0f) =
+        LiveAnalyzer.Frame(loud, bass, onset, beat, pitch, voice)
 
     @Test
     fun `a beat starts a decaying pulse in rhythm mode`() {
@@ -39,12 +39,29 @@ class LiveScoreTest {
     }
 
     @Test
-    fun `full mode is the louder of rhythm and scaled bass, melody ticks with pitch`() {
+    fun `voice mode snaps on each syllable and lets go in the gaps`() {
+        val s = LiveScore().apply { mode = Mode.VOICE }
+        assertEquals(0, s.amplitude(frame(voice = 0.05f), 20f))
+        val first = s.amplitude(frame(voice = 0.9f), 20f)
+        assertEquals(255, first)
+        val held = (0 until 6).map { s.amplitude(frame(voice = 0.9f), 20f) }
+        assertTrue("$held", held.all { it in 220..245 })
+        val release = (0 until 3).map { s.amplitude(frame(voice = 0f), 20f) }
+        assertTrue("$release", release[0] in 100..160 && release[2] < 60)
+        // A softer syllable after a loud one still gets its own edge.
+        s.amplitude(frame(voice = 0f), 20f)
+        assertTrue(s.amplitude(frame(voice = 0.5f), 20f) > 150)
+    }
+
+    @Test
+    fun `full mode is the loudest of rhythm, scaled bass and scaled voice, melody ticks with pitch`() {
         val s = LiveScore().apply { mode = Mode.FULL }
         val beat = s.amplitude(frame(bass = 0.9f, onset = 1f, beat = true), 20f)
         assertEquals(255, beat)
         val later = (0 until 8).map { s.amplitude(frame(bass = 0.9f), 20f) }.last()
         assertTrue("$later", later in 120..180)
+        val v = LiveScore().apply { mode = Mode.FULL }
+        assertTrue(v.amplitude(frame(voice = 0.9f), 20f) in 140..160)
 
         val m = LiveScore().apply { mode = Mode.MELODY }
         var ticks = 0

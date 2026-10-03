@@ -13,6 +13,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -59,7 +61,7 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /** The whole app: other apps' sound → this motor. Permissions, the capture consent, and the controls. */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun LiveScreen(deps: Deps) {
     val context = LocalContext.current
@@ -176,7 +178,7 @@ fun LiveScreen(deps: Deps) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("진동 방식", style = MaterialTheme.typography.titleSmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         for (m in Mode.entries) {
                             FilterChip(
                                 selected = live.mode == m,
@@ -228,6 +230,23 @@ fun LiveScreen(deps: Deps) {
                                     LiveState.update { s -> s.copy(muted = on) }
                                     deps.prefs.muted = on
                                 }
+                            },
+                        )
+                    }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("배경 소리 빼기", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "1~2초 넘게 그대로 이어지는 웅웅·쉬익·드론·팬 소리는 빼고, 말소리·비트·음처럼 튀는 소리만 진동으로 냅니다.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = live.suppress,
+                            onCheckedChange = { on ->
+                                LiveState.update { s -> s.copy(suppress = on) }
+                                deps.prefs.suppress = on
                             },
                         )
                     }

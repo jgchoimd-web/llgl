@@ -12,6 +12,8 @@ object LiveState {
         val mode: Mode = Mode.FULL,
         val intensity: Float = 1f,
         val muted: Boolean = true,
+        /** Steady background sounds are subtracted before anything vibrates. */
+        val suppress: Boolean = true,
         /** Meter values for the screen, 0..1. */
         val loud: Float = 0f,
         val bass: Float = 0f,

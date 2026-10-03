@@ -20,4 +20,9 @@ class Prefs(context: Context) {
     var muted: Boolean
         get() = p.getBoolean("live_muted", true)
         set(value) = p.edit { putBoolean("live_muted", value) }
+
+    /** Steady background sounds subtracted before anything vibrates; on by default. */
+    var suppress: Boolean
+        get() = p.getBoolean("suppress", true)
+        set(value) = p.edit { putBoolean("suppress", value) }
 }

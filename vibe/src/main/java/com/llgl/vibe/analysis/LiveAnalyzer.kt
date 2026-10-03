@@ -6,24 +6,46 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
- * The streaming twin of [Analyzer]: one block at a time, no knowledge of the future. Levels are
- * normalised against a slowly decaying maximum instead of a percentile, and a beat is confirmed
- * one block late (the next block must not be higher), so each call returns the frame for the
- * block before it.
+ * The streaming analyser: one block at a time, no knowledge of the future.
+ *
+ * Each band's energy is measured above a noise floor that hugs the band's recent low points and
+ * climbs slowly, so a sound that stays steady for more than a second (a hum, hiss, a fan, rumble,
+ * a held drone) sinks into the floor and stops counting, while anything that comes and goes
+ * (speech syllables, hits, notes) stays in the foreground. Levels are normalised against a
+ * slowly decaying maximum instead of a percentile, and a beat is confirmed one block late (the
+ * next block must not be higher), so each call returns the frame for the block before it.
  */
 class LiveAnalyzer(val sampleRate: Int, val blockMs: Int = 20) {
-    data class Frame(val loud: Float, val bass: Float, val onset: Float, val beat: Boolean, val pitch: Float)
+    /**
+     * Foreground levels 0..1: [loud] of the whole signal (or of the speech band, whichever is
+     * higher), [bass] of the band below 150 Hz, [voice] of the 300–3000 Hz band where speech
+     * lives. [onset] is how much louder this block got, [beat] a confirmed onset peak, [pitch] in
+     * Hz or 0 when nothing tonal is there.
+     */
+    data class Frame(val loud: Float, val bass: Float, val onset: Float, val beat: Boolean, val pitch: Float, val voice: Float = 0f)
 
     val blockSize: Int = (sampleRate * blockMs / 1000).coerceAtLeast(1)
 
-    /** Raw RMS of the last block, before any normalisation: tells silence from a quiet passage. */
+    /** Whether steady sounds are subtracted before anything else is measured. */
+    @Volatile
+    var suppressBackground: Boolean = true
+
+    /** Raw RMS of the last block, before the floor or any normalisation: tells silence from a quiet passage. */
     var lastRms: Float = 0f
         private set
 
     private val low1 = Biquad.lowPass(sampleRate, 150f)
     private val low2 = Biquad.lowPass(sampleRate, 150f)
-    private val mid = Biquad.bandPass(sampleRate, 700f, 0.6f)
+    private val voiceHp = Biquad.highPass(sampleRate, 300f)
+    private val voiceLp = Biquad.lowPass(sampleRate, 3000f)
     private val high = Biquad.highPass(sampleRate, 2500f)
+
+    private val lowHistory = FloatArray(LOW_BLOCKS)
+    private var lowPos = 0
+    private val raw = FloatArray(4)
+    private val floor = FloatArray(4)
+    private val margins = floatArrayOf(2f, 2.5f, 2f, 2f)
+    private val e = FloatArray(4)
     private val refs = FloatArray(4) { FLOOR }
     private val prevLog = FloatArray(3)
     private val ePrev = FloatArray(3)
@@ -56,7 +78,7 @@ class LiveAnalyzer(val sampleRate: Int, val blockMs: Int = 20) {
         for (i in 0 until blockSize) {
             val x = samples[offset + i]
             val l = low2.process(low1.process(x))
-            val m = mid.process(x)
+            val m = voiceLp.process(voiceHp.process(x))
             val h = high.process(x)
             sa += x * x
             sl += l * l
@@ -71,16 +93,36 @@ class LiveAnalyzer(val sampleRate: Int, val blockMs: Int = 20) {
                 decimK = 0
             }
         }
-        val e = floatArrayOf(sa / blockSize, sl / blockSize, sm / blockSize, sh / blockSize)
-        lastRms = sqrt(e[0])
-        for (b in 0 until 4) refs[b] = max(e[b], max(FLOOR, refs[b] * DECAY))
-        val loud = sqrt(e[0] / refs[0]).coerceIn(0f, 1f)
+        lastRms = sqrt(sa / blockSize)
+        // The band below 150 Hz holds only a few cycles per block, so its energy is averaged over
+        // five blocks (100 ms) before anything judges it; the others are steady enough as they are.
+        lowHistory[lowPos] = sl / blockSize
+        lowPos = (lowPos + 1) % lowHistory.size
+        var lowSum = 0f
+        for (v in lowHistory) lowSum += v
+        raw[0] = sa / blockSize
+        raw[1] = lowSum / lowHistory.size
+        raw[2] = sm / blockSize
+        raw[3] = sh / blockSize
+
+        for (b in 0 until 4) {
+            // The floor never sits above the current level and climbs ~3 % a block (plus a sliver
+            // of the level, so it catches up from silence in about a second and a half). Speech
+            // pauses and the gaps between hits pull it straight back down.
+            floor[b] = max(FLOOR_MIN, if (block == 0) raw[b] else min(raw[b], floor[b] * FLOOR_RISE + FLOOR_LEAK * raw[b]))
+            e[b] = if (suppressBackground) max(0f, raw[b] - margins[b] * floor[b]) else raw[b]
+            // Levels are relative to the recent raw maximum, so a small leftover above the floor
+            // never reads as loud.
+            refs[b] = max(raw[b], max(FLOOR, refs[b] * DECAY))
+        }
+        val lvlAll = sqrt(e[0] / refs[0]).coerceIn(0f, 1f)
         val bass = sqrt(e[1] / refs[1]).coerceIn(0f, 1f)
+        val voice = sqrt(e[2] / refs[2]).coerceIn(0f, 1f)
+        val loud = max(lvlAll, voice)
 
         var flux = 0f
         for (b in 0 until 3) {
-            // Two-block energy average: the bass band holds only a few cycles per block, so its
-            // single-block estimate jitters by half even on a steady sound; a hit outlasts a block.
+            // Two-block energy average: a hit outlasts a block, jitter does not.
             val es = 0.5f * (e[b + 1] + ePrev[b])
             ePrev[b] = e[b + 1]
             val v = ln(1f + 50f * es / refs[b + 1])
@@ -115,7 +157,7 @@ class LiveAnalyzer(val sampleRate: Int, val blockMs: Int = 20) {
         }
 
         val done = pending?.copy(beat = beat)
-        pending = Frame(loud, bass, onset, false, pitch)
+        pending = Frame(loud, bass, onset, false, pitch, voice)
         onset2 = onset1
         onset1 = onset
         block++
@@ -135,5 +177,9 @@ class LiveAnalyzer(val sampleRate: Int, val blockMs: Int = 20) {
          */
         const val FLUX_FLOOR = 3f
         const val MIN_GAP_BLOCKS = 6
+        const val LOW_BLOCKS = 5
+        const val FLOOR_MIN = 1e-7f
+        const val FLOOR_RISE = 1.03f
+        const val FLOOR_LEAK = 0.002f
     }
 }

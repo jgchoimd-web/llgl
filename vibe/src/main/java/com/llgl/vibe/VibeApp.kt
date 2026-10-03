@@ -17,6 +17,6 @@ class VibeApp : Application() {
         super.onCreate()
         deps = Deps(this)
         val prefs = deps.prefs
-        LiveState.update { it.copy(mode = prefs.mode, intensity = prefs.intensity, muted = prefs.muted) }
+        LiveState.update { it.copy(mode = prefs.mode, intensity = prefs.intensity, muted = prefs.muted, suppress = prefs.suppress) }
     }
 }
