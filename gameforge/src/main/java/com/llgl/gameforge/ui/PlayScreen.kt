@@ -62,6 +62,7 @@ fun PlayScreen(
     onRevise: (String) -> Unit,
     onFix: (List<String>) -> Unit,
     onCode: () -> Unit,
+    onEdit: () -> Unit,
     onDeleted: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -124,6 +125,10 @@ fun PlayScreen(
             Box {
                 IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, contentDescription = "더보기") }
                 DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    DropdownMenuItem(text = { Text("코드 직접 편집") }, onClick = {
+                        showMenu = false
+                        onEdit()
+                    })
                     DropdownMenuItem(text = { Text("코드 보기") }, onClick = {
                         showMenu = false
                         onCode()
@@ -210,7 +215,7 @@ fun PlayScreen(
             title = { Text(if (errors.isEmpty()) "오류 없음" else "자바스크립트 오류 ${errors.size}개") },
             text = {
                 if (errors.isEmpty()) {
-                    Text("이 게임은 지금까지 오류 없이 돌아가고 있어요. 뭔가 안 움직이면 ‘수정 요청’으로 말해 보세요.")
+                    Text("이 게임은 지금까지 오류 없이 돌아가고 있어요. 뭔가 안 움직이면 ‘수정 요청’으로 말하거나 코드를 직접 고쳐 보세요.")
                 } else {
                     Column(
                         Modifier

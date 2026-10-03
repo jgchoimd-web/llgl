@@ -4,6 +4,8 @@
 
     <!-- Only for fetching a model file once; the model itself runs on the phone. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Lets a game's navigator.vibrate() work (the engine buzzes on game over). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:name=".GameForgeApp"

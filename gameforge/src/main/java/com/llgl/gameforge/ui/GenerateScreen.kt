@@ -87,11 +87,11 @@ fun GenerateScreen(generation: GenerationController, onLeave: () -> Unit) {
             when (val o = outcome) {
                 null -> RunningBody(progress, now, onCancel = { confirmCancel = true })
 
-                is Outcome.Saved -> Text("완료! 게임을 여는 중…")
+                is Outcome.Saved -> Text("완료! ${o.summary.ifBlank { "게임" }} · 여는 중…")
 
-                is Outcome.NoHtml -> {
+                is Outcome.NoCode -> {
                     Text(
-                        "응답에서 게임 HTML을 찾지 못했어요. 모델이 설명만 했거나 코드가 잘렸을 수 있어요. 아래가 모델이 쓴 전부입니다.",
+                        "응답에서 바꿀 코드를 찾지 못했어요. 모델이 설명만 했거나 코드가 잘렸을 수 있어요. 아래가 모델이 쓴 전부입니다.",
                         color = MaterialTheme.colorScheme.error,
                     )
                     CodeBox(o.raw, Modifier.weight(1f).fillMaxWidth())

@@ -3,6 +3,11 @@ package com.llgl.gameforge.gen
 import android.content.Context
 import com.llgl.gameforge.Settings
 import com.llgl.gameforge.games.GameStore
+import com.llgl.gameforge.harness.CodeMerge
+import com.llgl.gameforge.harness.ContextBuilder
+import com.llgl.gameforge.harness.JsDecls
+import com.llgl.gameforge.harness.ReplyParser
+import com.llgl.gameforge.harness.Shell
 import com.llgl.gameforge.llm.Engine
 import com.llgl.gameforge.model.ModelCatalog
 import com.llgl.gameforge.model.ModelFiles
@@ -16,8 +21,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Runs one generation at a time: loads the chosen model, builds the prompt, streams the reply
- * into [progress], then extracts the HTML and saves the game. The UI only watches the flows.
+ * The harness around the model. A new game is written as declarations for the engine template;
+ * a change or a fix is asked for as the declarations that change, against the part of the script
+ * that matters (with up to two `READ` rounds for more), and merged by name. The UI only watches
+ * the flows.
  */
 class GenerationController(
     private val context: Context,
@@ -47,11 +54,13 @@ class GenerationController(
         val promptTokens: Int,
         val maxTokens: Int,
         val modelName: String,
+        /** 1 for the first request; a `READ` round-trip adds one. */
+        val round: Int = 1,
     )
 
     sealed interface Outcome {
-        data class Saved(val gameId: String, val created: Boolean) : Outcome
-        data class NoHtml(val raw: String) : Outcome
+        data class Saved(val gameId: String, val created: Boolean, val summary: String) : Outcome
+        data class NoCode(val raw: String) : Outcome
         data class Failed(val message: String) : Outcome
         data object Cancelled : Outcome
     }
@@ -91,42 +100,19 @@ class GenerationController(
         _outcome.value = null
     }
 
-    private suspend fun run(job: Job) {
+    /** Everything one run needs to remember between steps. */
+    private inner class Run(val job: Job, val maxTokens: Int, val modelName: String) {
         val startedAt = System.currentTimeMillis()
-        val fileName = settings.selectedModel
-        if (fileName == null) {
-            _outcome.value = Outcome.Failed("먼저 모델 화면에서 모델을 받아 선택하세요.")
-            return
-        }
-        val file = files.file(fileName)
-        if (!file.exists()) {
-            _outcome.value = Outcome.Failed("모델 파일이 없어요: $fileName")
-            return
-        }
-        val maxTokens = settings.contextFor(fileName)
-        val modelName = ModelCatalog.byFile(fileName)?.name ?: fileName
+        var totalTokens = 0
         var progress = Progress(job, Phase.LOADING_MODEL, "", 0, startedAt, 0, maxTokens, modelName)
-        _progress.value = progress
-        try {
-            Engine.load(context, file, Engine.backendOf(settings.backend), maxTokens)
-
-            val baseHtml = job.gameId?.let { store.html(it) }
-            val prompt = when (job) {
-                is Job.Create -> Prompts.create(job.idea, Prompts.linesFor(maxTokens))
-                is Job.Revise -> Prompts.revise(baseHtml ?: throw IllegalStateException("게임 파일이 없어요"), job.request)
-                is Job.Fix -> Prompts.fix(baseHtml ?: throw IllegalStateException("게임 파일이 없어요"), job.errors)
+            set(value) {
+                field = value
+                _progress.value = value
             }
-            val promptTokens = withContext(Engine.dispatcher) { Engine.countTokens(prompt) }
-            if (promptTokens > 0 && maxTokens - promptTokens < MIN_REPLY_TOKENS) {
-                _outcome.value = Outcome.Failed(
-                    "요청이 이 모델의 컨텍스트($maxTokens 토큰)에 비해 너무 길어요(프롬프트 $promptTokens 토큰). " +
-                        "컨텍스트가 큰 모델을 쓰거나 더 짧은 게임으로 시도해 보세요.",
-                )
-                return
-            }
-            progress = progress.copy(phase = Phase.GENERATING, promptTokens = promptTokens.coerceAtLeast(0))
-            _progress.value = progress
 
+        /** Streams one reply, keeping [progress] current, and returns the full text. */
+        suspend fun generate(prompt: String, promptTokens: Int, round: Int): String {
+            progress = progress.copy(phase = Phase.GENERATING, text = "", tokens = 0, promptTokens = promptTokens.coerceAtLeast(0), round = round)
             val text = StringBuilder()
             var tokens = 0
             var lastEmit = 0L
@@ -147,26 +133,34 @@ class GenerationController(
                 }
                 if (snapshot.isNotEmpty()) _progress.value = progress.copy(text = snapshot, tokens = count)
             }
+            totalTokens += tokens
             progress = progress.copy(phase = Phase.SAVING, text = raw, tokens = tokens)
-            _progress.value = progress
+            return raw
+        }
 
-            val fallbackTitle = when (job) {
-                is Job.Create -> job.idea
-                else -> store.meta(job.gameId!!)?.title ?: "게임"
+        val duration: Long get() = System.currentTimeMillis() - startedAt
+    }
+
+    private suspend fun run(job: Job) {
+        val fileName = settings.selectedModel
+        if (fileName == null) {
+            _outcome.value = Outcome.Failed("먼저 모델 화면에서 모델을 받아 선택하세요.")
+            return
+        }
+        val file = files.file(fileName)
+        if (!file.exists()) {
+            _outcome.value = Outcome.Failed("모델 파일이 없어요: $fileName")
+            return
+        }
+        val maxTokens = settings.contextFor(fileName)
+        val run = Run(job, maxTokens, ModelCatalog.byFile(fileName)?.name ?: fileName)
+        run.progress = run.progress
+        try {
+            Engine.load(context, file, Engine.backendOf(settings.backend), maxTokens)
+            when (job) {
+                is Job.Create -> create(run, job)
+                is Job.Revise, is Job.Fix -> edit(run, job)
             }
-            val extracted = HtmlExtractor.extract(raw, fallbackTitle)
-            if (extracted == null) {
-                _outcome.value = Outcome.NoHtml(raw)
-                return
-            }
-            val html = HtmlExtractor.prepare(extracted.html)
-            val duration = System.currentTimeMillis() - startedAt
-            val game = when (job) {
-                is Job.Create -> store.create(extracted.title, job.idea, html, modelName, tokens, duration)
-                is Job.Revise -> store.update(job.gameId, html, modelName, tokens, duration, job.request.trim().take(60))
-                is Job.Fix -> store.update(job.gameId, html, modelName, tokens, duration, "오류 수정")
-            }
-            _outcome.value = Outcome.Saved(game.id, job is Job.Create)
         } catch (e: CancellationException) {
             _outcome.value = Outcome.Cancelled
             throw e
@@ -177,8 +171,106 @@ class GenerationController(
         }
     }
 
+    private suspend fun create(run: Run, job: Job.Create) {
+        val prompt = Prompts.create(job.idea, Prompts.linesFor(run.maxTokens))
+        val promptTokens = countTokens(prompt)
+        if (promptTokens > 0 && run.maxTokens - promptTokens < MIN_REPLY_TOKENS) {
+            _outcome.value = Outcome.Failed("요청이 이 모델의 컨텍스트($run.maxTokens 토큰)에 비해 너무 길어요. 아이디어를 짧게 적어 보세요.")
+            return
+        }
+        val raw = run.generate(prompt, promptTokens, round = 1)
+        val reply = ReplyParser.parse(raw)
+        if (reply.decls.isEmpty()) {
+            _outcome.value = Outcome.NoCode(raw)
+            return
+        }
+        val merged = CodeMerge.apply("", reply, Shell.engineNames)
+        val title = Shell.titleFrom(merged.code) ?: clipTitle(job.idea)
+        val game = store.create(title, job.idea, Shell.template, merged.code, run.modelName, run.totalTokens, run.duration)
+        _outcome.value = Outcome.Saved(game.id, created = true, summary = merged.summary())
+    }
+
+    private suspend fun edit(run: Run, job: Job) {
+        val id = job.gameId ?: return
+        val base = store.gameJs(id) ?: throw IllegalStateException("게임 코드를 찾을 수 없어요")
+        val shell = store.shell(id)
+        val decls = JsDecls.parse(base)
+        val errors = (job as? Job.Fix)?.errors ?: emptyList()
+        val request = (job as? Job.Revise)?.request ?: ""
+        val errorLines = ContextBuilder.errorLines(errors) { Shell.htmlLineToGameLine(shell, it) }
+        val errorNames = ContextBuilder.errorNames(errors, decls)
+        val reads = mutableListOf<String>()
+        var budgetChars = contextBudgetChars(run.maxTokens)
+        var round = 1
+        while (true) {
+            val selection = ContextBuilder.select(decls, budgetChars, request, errorLines, errorNames, reads)
+            val allowRead = round < MAX_ROUNDS && !selection.whole
+            val prompt = when (job) {
+                is Job.Fix -> Prompts.fix(errors, selection.code(), selection.map(), allowRead)
+                else -> Prompts.edit(request, selection.code(), selection.map(), allowRead)
+            }
+            val promptTokens = countTokens(prompt)
+            if (promptTokens > 0 && run.maxTokens - promptTokens < MIN_REPLY_TOKENS) {
+                // Too much context for this model: show less of the script and try again.
+                budgetChars /= 2
+                if (budgetChars < MIN_BUDGET_CHARS) {
+                    _outcome.value = Outcome.Failed(
+                        "이 모델의 컨텍스트(${run.maxTokens} 토큰)로는 이 게임을 고칠 만큼 코드를 보여 줄 수 없어요. 컨텍스트가 큰 모델을 쓰거나 코드를 직접 편집해 보세요.",
+                    )
+                    return
+                }
+                continue
+            }
+            val raw = run.generate(prompt, promptTokens, round)
+            val reply = ReplyParser.parse(raw)
+            if (reply.isEmpty && reply.reads.isNotEmpty() && round < MAX_ROUNDS) {
+                reads += reply.reads
+                round++
+                continue
+            }
+            if (reply.isEmpty) {
+                _outcome.value = Outcome.NoCode(raw)
+                return
+            }
+            val merged = CodeMerge.apply(base, reply, Shell.engineNames)
+            if (!merged.changed) {
+                _outcome.value = Outcome.NoCode(raw)
+                return
+            }
+            val change = when (job) {
+                is Job.Revise -> job.request.trim().take(50)
+                is Job.Fix -> "오류 수정"
+                else -> ""
+            } + " · " + merged.summary()
+            store.update(id, merged.code, run.modelName, run.totalTokens, run.duration, change, Shell.titleFrom(merged.code))
+            _outcome.value = Outcome.Saved(id, created = false, summary = merged.summary())
+            return
+        }
+    }
+
+    private suspend fun countTokens(prompt: String): Int = withContext(Engine.dispatcher) { Engine.countTokens(prompt) }
+
+    /** Characters of game script we can show: context minus the reply we expect minus the fixed parts of the prompt. */
+    private fun contextBudgetChars(maxTokens: Int): Int {
+        val replyReserve = if (maxTokens <= 2048) 700 else 1000
+        return ((maxTokens - replyReserve - PROMPT_OVERHEAD_TOKENS) * CHARS_PER_TOKEN).coerceAtLeast(MIN_BUDGET_CHARS)
+    }
+
+    private fun clipTitle(idea: String): String {
+        val one = idea.replace(Regex("\\s+"), " ").trim()
+        return when {
+            one.isEmpty() -> "이름 없는 게임"
+            one.length > 40 -> one.substring(0, 40).trimEnd() + "…"
+            else -> one
+        }
+    }
+
     private companion object {
         const val MIN_REPLY_TOKENS = 400
         const val EMIT_EVERY_MS = 80L
+        const val MAX_ROUNDS = 3
+        const val PROMPT_OVERHEAD_TOKENS = 600
+        const val CHARS_PER_TOKEN = 3
+        const val MIN_BUDGET_CHARS = 500
     }
 }

@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.llgl.gameforge.gen.GenerationController
 import com.llgl.gameforge.ui.CodeScreen
+import com.llgl.gameforge.ui.EditScreen
 import com.llgl.gameforge.ui.GenerateScreen
 import com.llgl.gameforge.ui.LibraryScreen
 import com.llgl.gameforge.ui.ModelScreen
@@ -21,9 +22,10 @@ sealed interface Screen {
     data class Generate(val returnTo: Screen) : Screen
     data class Play(val gameId: String) : Screen
     data class Code(val gameId: String) : Screen
+    data class Edit(val gameId: String) : Screen
 }
 
-/** The whole app: five screens and a hand-rolled back stack of depth one. */
+/** The whole app: six screens and a hand-rolled back stack of depth one. */
 @Composable
 fun GameForgeRoot(deps: Deps) {
     var screen by remember { mutableStateOf<Screen>(Screen.Library) }
@@ -80,12 +82,28 @@ fun GameForgeRoot(deps: Deps) {
                 screen = Screen.Generate(s)
             },
             onCode = { screen = Screen.Code(s.gameId) },
+            onEdit = { screen = Screen.Edit(s.gameId) },
             onDeleted = {
                 libraryVersion++
                 screen = Screen.Library
             },
         )
 
-        is Screen.Code -> CodeScreen(deps = deps, gameId = s.gameId, onBack = { screen = Screen.Play(s.gameId) })
+        is Screen.Code -> CodeScreen(
+            deps = deps,
+            gameId = s.gameId,
+            onBack = { screen = Screen.Play(s.gameId) },
+            onEdit = { screen = Screen.Edit(s.gameId) },
+        )
+
+        is Screen.Edit -> EditScreen(
+            deps = deps,
+            gameId = s.gameId,
+            onBack = { screen = Screen.Play(s.gameId) },
+            onSaved = {
+                libraryVersion++
+                screen = Screen.Play(s.gameId)
+            },
+        )
     }
 }
