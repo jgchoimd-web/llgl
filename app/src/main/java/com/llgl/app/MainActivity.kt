@@ -1,10 +1,16 @@
 package com.llgl.app
 
+import android.app.WallpaperManager
+import android.content.ActivityNotFoundException
+import android.content.ComponentName
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +20,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -45,6 +53,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         if (Build.VERSION.SDK_INT >= 28) {
@@ -88,8 +97,7 @@ class MainActivity : ComponentActivity() {
                     )
                     if (showMenu) {
                         MenuPanel(
-                            sound = prefs.sound,
-                            haptics = prefs.haptics,
+                            prefs = prefs,
                             onSound = { on ->
                                 prefs.sound = on
                                 view?.soundEnabled = on
@@ -97,6 +105,12 @@ class MainActivity : ComponentActivity() {
                             onHaptics = { on ->
                                 prefs.haptics = on
                                 view?.hapticsEnabled = on
+                            },
+                            onWallpaperSound = { on -> prefs.wallpaperSound = on },
+                            onWallpaperHaptics = { on -> prefs.wallpaperHaptics = on },
+                            onWallpaper = {
+                                showMenu = false
+                                openWallpaperPicker()
                             },
                             onReset = {
                                 view?.reset()
@@ -131,6 +145,22 @@ class MainActivity : ComponentActivity() {
         if (hasFocus) hideSystemBars()
     }
 
+    /** Opens the system's live wallpaper preview for this box, or the general chooser as a fallback. */
+    private fun openWallpaperPicker() {
+        val component = ComponentName(this, TerrariumWallpaper::class.java)
+        val direct = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
+            .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, component)
+        try {
+            startActivity(direct)
+        } catch (_: ActivityNotFoundException) {
+            try {
+                startActivity(Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER))
+            } catch (_: ActivityNotFoundException) {
+                Toast.makeText(this, R.string.menu_wallpaper_unavailable, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     private fun displayRotation(): Int = try {
         if (Build.VERSION.SDK_INT >= 30) {
             display?.rotation ?: 0
@@ -152,15 +182,19 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun MenuPanel(
-    sound: Boolean,
-    haptics: Boolean,
+    prefs: Prefs,
     onSound: (Boolean) -> Unit,
     onHaptics: (Boolean) -> Unit,
+    onWallpaperSound: (Boolean) -> Unit,
+    onWallpaperHaptics: (Boolean) -> Unit,
+    onWallpaper: () -> Unit,
     onReset: () -> Unit,
     onClose: () -> Unit,
 ) {
-    var soundOn by remember { mutableStateOf(sound) }
-    var hapticsOn by remember { mutableStateOf(haptics) }
+    var soundOn by remember { mutableStateOf(prefs.sound) }
+    var hapticsOn by remember { mutableStateOf(prefs.haptics) }
+    var wallpaperSoundOn by remember { mutableStateOf(prefs.wallpaperSound) }
+    var wallpaperHapticsOn by remember { mutableStateOf(prefs.wallpaperHaptics) }
     // The scrim swallows touches so the box underneath is not poked, and a tap on it closes the menu.
     Box(
         modifier = Modifier
@@ -174,7 +208,10 @@ private fun MenuPanel(
             shape = MaterialTheme.shapes.large,
             modifier = Modifier.pointerInput(Unit) { detectTapGestures { } },
         ) {
-            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.padding(20.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 Text(text = stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge)
                 Text(text = stringResource(R.string.menu_hint), style = MaterialTheme.typography.bodySmall)
                 MenuSwitch(stringResource(R.string.menu_sound), soundOn) {
@@ -185,9 +222,18 @@ private fun MenuPanel(
                     hapticsOn = it
                     onHaptics(it)
                 }
+                Button(onClick = onWallpaper, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.menu_wallpaper)) }
+                MenuSwitch(stringResource(R.string.menu_wallpaper_sound), wallpaperSoundOn) {
+                    wallpaperSoundOn = it
+                    onWallpaperSound(it)
+                }
+                MenuSwitch(stringResource(R.string.menu_wallpaper_haptics), wallpaperHapticsOn) {
+                    wallpaperHapticsOn = it
+                    onWallpaperHaptics(it)
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedButton(onClick = onReset) { Text(stringResource(R.string.menu_reset)) }
-                    Button(onClick = onClose) { Text(stringResource(R.string.menu_close)) }
+                    OutlinedButton(onClick = onClose) { Text(stringResource(R.string.menu_close)) }
                 }
             }
         }

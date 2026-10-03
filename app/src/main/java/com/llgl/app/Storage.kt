@@ -36,6 +36,15 @@ class Prefs(context: Context) {
         get() = prefs.getBoolean(KEY_HAPTICS, true)
         set(value) = prefs.edit { putBoolean(KEY_HAPTICS, value) }
 
+    /** The wallpaper stays quiet unless asked: a box clicking on the home screen gets old fast. */
+    var wallpaperSound: Boolean
+        get() = prefs.getBoolean(KEY_WALLPAPER_SOUND, false)
+        set(value) = prefs.edit { putBoolean(KEY_WALLPAPER_SOUND, value) }
+
+    var wallpaperHaptics: Boolean
+        get() = prefs.getBoolean(KEY_WALLPAPER_HAPTICS, false)
+        set(value) = prefs.edit { putBoolean(KEY_WALLPAPER_HAPTICS, value) }
+
     /** Starts over with a new seed and a fresh planting date. */
     fun replant() {
         prefs.edit {
@@ -49,16 +58,25 @@ class Prefs(context: Context) {
         const val KEY_PLANTED = "plantedAt"
         const val KEY_SOUND = "sound"
         const val KEY_HAPTICS = "haptics"
+        const val KEY_WALLPAPER_SOUND = "wallpaperSound"
+        const val KEY_WALLPAPER_HAPTICS = "wallpaperHaptics"
     }
 }
 
-/** Where everything lies when the app goes away, so it is still there when it comes back. */
+/**
+ * Where everything lies when the app goes away, so it is still there when it comes back. One file
+ * per box size, so the app and the wallpaper share a box when their surfaces match and never
+ * overwrite each other when they do not.
+ */
 class TerrariumStore(context: Context) {
-    private val file = File(context.filesDir, "terrarium.bin")
+    private val dir: File = context.filesDir
+
+    private fun file(world: Terrarium): File = File(dir, "terrarium_${world.width.toInt()}x${world.height.toInt()}.bin")
 
     fun save(world: Terrarium) {
         try {
-            val tmp = File(file.parentFile, file.name + ".tmp")
+            val target = file(world)
+            val tmp = File(dir, target.name + ".tmp")
             DataOutputStream(tmp.outputStream().buffered()).use { out ->
                 out.writeInt(MAGIC)
                 out.writeInt(VERSION)
@@ -66,9 +84,9 @@ class TerrariumStore(context: Context) {
                 out.writeFloat(world.height)
                 world.save(out)
             }
-            if (!tmp.renameTo(file)) {
-                file.delete()
-                tmp.renameTo(file)
+            if (!tmp.renameTo(target)) {
+                target.delete()
+                tmp.renameTo(target)
             }
         } catch (_: Exception) {
         }
@@ -76,9 +94,10 @@ class TerrariumStore(context: Context) {
 
     /** Restores into [world] if a save exists for a box of the same size. */
     fun load(world: Terrarium): Boolean {
-        if (!file.exists()) return false
+        val f = file(world)
+        if (!f.exists()) return false
         return try {
-            DataInputStream(file.inputStream().buffered()).use { input ->
+            DataInputStream(f.inputStream().buffered()).use { input ->
                 if (input.readInt() != MAGIC || input.readInt() != VERSION) return false
                 val w = input.readFloat()
                 val h = input.readFloat()
@@ -90,8 +109,12 @@ class TerrariumStore(context: Context) {
         }
     }
 
-    fun delete() {
-        file.delete()
+    /** When the save for [world]'s size was last written, or 0 when there is none. */
+    fun lastModified(world: Terrarium): Long = file(world).let { if (it.exists()) it.lastModified() else 0L }
+
+    fun deleteAll() {
+        dir.listFiles { f -> f.name.startsWith("terrarium_") && f.name.endsWith(".bin") }?.forEach { it.delete() }
+        File(dir, "terrarium.bin").delete()
     }
 
     private companion object {
