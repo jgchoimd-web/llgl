@@ -1,40 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">다이얼 키보드</string>
-    <string name="ime_name">다이얼 키보드</string>
-    <string name="subtype_korean">한국어 (다이얼)</string>
-    <string name="subtype_english">English (dial)</string>
-
-    <!-- Setup screen -->
-    <string name="setup_title">엄지 하나로 돌리는 다이얼 키보드</string>
-    <string name="setup_intro">펄스식 전화기 다이얼입니다. 손가락 구멍이 뚫린 원판 세 장이 엄지와 함께 돌아가고, 손을 떼면 펄스를 딸깍이며 제자리로 돌아옵니다. 돌리기, 안으로 밀기, 밖으로 밀기로 글자 하나를 한 번에 넣습니다. 오른쪽 아래 모서리에 엄지 관절이 오도록 잡으세요.</string>
-    <string name="step_enable_title">1. 키보드 켜기</string>
-    <string name="step_enable_desc">시스템 설정의 키보드 목록에서 \"다이얼 키보드\"를 켭니다.</string>
-    <string name="step_enable_button">키보드 설정 열기</string>
-    <string name="step_select_title">2. 키보드 선택</string>
-    <string name="step_select_desc">현재 쓰는 키보드를 다이얼 키보드로 바꿉니다. 나중에 되돌리려면 같은 버튼을 다시 누르세요.</string>
-    <string name="step_select_button">키보드 고르기</string>
-    <string name="status_done">완료</string>
-    <string name="status_not_enabled">아직 꺼져 있음</string>
-    <string name="status_not_selected">다른 키보드가 선택되어 있음</string>
-    <string name="practice_title">3. 연습하기</string>
-    <string name="practice_hint">여기에 입력해 보세요</string>
-
-    <string name="settings_title">설정</string>
-    <string name="setting_height">키보드 높이: %1$d dp</string>
-    <string name="setting_tick">한 칸(틱) 각도: %1$d° (작을수록 조금만 돌려도 다음 글자)</string>
-    <string name="setting_haptics">틱마다 진동</string>
-    <string name="setting_clicks">펄스 소리 (딸깍)</string>
-    <string name="setting_hints">힌트 표시 (⌫ ↵, 밀었을 때 글자)</string>
-    <string name="setting_left">왼손 모드 (좌우 반전)</string>
-    <string name="setting_auto_space">추천 단어 뒤에 자동 띄어쓰기</string>
-    <string name="setting_trail">엄지 궤적 표시</string>
-    <string name="reset_model">학습한 단어 모두 지우기</string>
-    <string name="reset_model_done">학습한 단어를 지웠습니다</string>
-
-    <string name="guide_title">다이얼 돌리는 법</string>
-    <string name="guide_body">• 바깥 원판 = 초성. 자음 구멍에 엄지를 넣고 링을 따라 돌리면 원판이 함께 돌아가며 구멍마다 딸깍. 구멍 아래로 보이는 글자가 지금 고른 자음입니다. 그대로 떼면 자음 하나(앞 글자에 받침이 될 수 있으면 받침으로 붙음).\n• 안으로 밀기 = 모음. 들어간 자리가 ㅏ, 위로 한 칸 ㅣ, 아래로 한 칸 ㅡ … 아래 표 순서입니다. 더 깊이 밀면 두 번째 모음 세트(ㅑ ㅕ ㅛ ㅠ …).\n• 다시 밖으로 밀기 = 받침. 나온 자리가 ㄴ, 위로 ㅇ ㄱ ㅂ …, 아래로 ㄹ ㅁ ㅅ …. 받침을 빼려면 다시 안으로.\n• 테두리 밖까지 밀면 된소리. 초성 ㄱ→ㄲ ㄷ→ㄸ ㅂ→ㅃ ㅅ→ㅆ ㅈ→ㅉ, 받침 ㄱ→ㄲ ㅅ→ㅆ.\n• 모음 링에 바로 올리면 ㅇ 초성(아, 이, 우 …). 자음만 친 다음 모음 링에 올리면 그 자음에 모음이 붙습니다.\n• 손을 떼면 원판이 돌린 만큼 펄스를 딸깍이며 제자리로 돌아옵니다. 기다릴 필요 없이 바로 다음 글자를 돌리면 됩니다.\n• 허브(오른쪽 아래): 탭 = 띄어쓰기, 왼쪽으로 튕기기 = 지우기(길게 = 단어 지우기), 위로 튕기기 = 엔터(길게 = 줄바꿈), 꾹 누르기 = 연속 지우기.\n• 영어·기호: 세 원판에 글자가 고정되어 있습니다. 링 경계를 넘어서 떼면 대문자 또는 다른 기호.\n• 위쪽 바: 내가 친 단어만 학습해서 추천합니다. 탭하면 완성됩니다.\n\n↑ = 위(시계 방향)로 한 칸씩, ↓ = 아래로 한 칸씩</string>
-    <string name="legend_vowel_a">모음 링 (안으로 한 번)</string>
-    <string name="legend_vowel_b">깊은 링 (안으로 두 번)</string>
-    <string name="legend_final">받침 (다시 바깥으로)</string>
+    <string name="app_name">테라리움</string>
+    <string name="menu_hint">폰이 유리 상자입니다. 기울이면 구슬과 모래, 물이 움직이고, 톡 치거나 끌면 생물이 반응하고, 꾹 누르면 먹이가 떨어지고, 흔들면 지진이 납니다. 어두워지면 반딧불이가 나옵니다. 두 손가락으로 톡 치면 이 메뉴가 열립니다.</string>
+    <string name="menu_sound">소리</string>
+    <string name="menu_haptics">진동</string>
+    <string name="menu_reset">새 테라리움</string>
+    <string name="menu_close">닫기</string>
 </resources>
