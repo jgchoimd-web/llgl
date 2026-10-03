@@ -49,6 +49,23 @@ class DialLayoutTest {
     }
 
     @Test
+    fun `the hole grid is centred on the ring and snapping picks the nearest hole`() {
+        val step = (9.0 * Math.PI / 180.0).toFloat()
+        val (aMin, aMax) = layout.range(Ring.VOWEL)
+        val mid = (aMin + aMax) / 2f
+        val grid = layout.gridAngles(Ring.VOWEL, step)
+        assertTrue(grid.any { Math.abs(it - mid) < 1e-5f })
+        assertTrue("grid reaches past both ends", grid.first() < aMin && grid.last() > aMax)
+        for (i in 1 until grid.size) assertEquals(step, grid[i] - grid[i - 1], 1e-5f)
+        assertEquals(mid + step, layout.snapToGrid(Ring.VOWEL, mid + step * 0.6f, step), 1e-5f)
+        assertEquals(mid, layout.snapToGrid(Ring.VOWEL, mid + step * 0.4f, step), 1e-5f)
+        assertEquals(mid - 2 * step, layout.snapToGrid(Ring.VOWEL, mid - step * 1.7f, step), 1e-5f)
+        assertEquals(layout.itemStep(Ring.OUTER, 16) * 16, aMaxMinusMin(Ring.OUTER), 1e-4f)
+    }
+
+    private fun aMaxMinusMin(ring: Ring): Float = layout.range(ring).let { (a, b) -> b - a }
+
+    @Test
     fun `left-handed mode mirrors the dial`() {
         val mirrored = DialLayout(width = 1080f, height = 400f * density, density = density, leftHanded = true)
         val c = layout.itemCenter(Ring.OUTER, 16, 7)

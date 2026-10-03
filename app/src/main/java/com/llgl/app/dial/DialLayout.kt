@@ -116,6 +116,26 @@ class DialLayout(
         return (aMin + index * step) to (aMin + (index + 1) * step)
     }
 
+    /** The angular width of one of [count] items on [ring]. */
+    fun itemStep(ring: Ring, count: Int): Float = range(ring).let { (a, b) -> (b - a) / count }
+
+    fun itemCenterAngle(ring: Ring, count: Int, index: Int): Float = itemAngles(ring, count, index).let { (a, b) -> (a + b) / 2f }
+
+    /** The finger holes of a pulse ring: a grid of [step] radians centred on the ring's middle, reaching one past each end. */
+    fun gridAngles(ring: Ring, step: Float): List<Float> {
+        val (aMin, aMax) = range(ring)
+        val mid = (aMin + aMax) / 2f
+        val n = ((aMax - aMin) / 2f / step).toInt() + 1
+        return (-n..n).map { mid + it * step }
+    }
+
+    /** The angle of the [gridAngles] hole nearest to [angle]. */
+    fun snapToGrid(ring: Ring, angle: Float, step: Float): Float {
+        val (aMin, aMax) = range(ring)
+        val mid = (aMin + aMax) / 2f
+        return mid + Math.round((angle - mid) / step) * step
+    }
+
     fun itemCenter(ring: Ring, count: Int, index: Int): Pt {
         val (a0, a1) = itemAngles(ring, count, index)
         val (rIn, rOut) = ringRadii(ring)

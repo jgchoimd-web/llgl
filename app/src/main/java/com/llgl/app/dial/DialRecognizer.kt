@@ -31,6 +31,8 @@ class DialRecognizer(
     longDistance: Float,
     /** How far past a ring edge the thumb must go before its zone changes, so edges do not flutter. */
     private val hysteresis: Float = 0f,
+    /** One pulse while dialling a final on the outer ring; the view passes the outer ring's hole spacing. */
+    private val finalTickDegrees: Float = tickDegrees,
 ) {
     sealed interface Result {
         data object None : Result
@@ -191,13 +193,13 @@ class DialRecognizer(
                         finalTicks = 0
                         finalHardened = false
                     } else {
-                        finalTicks = ticks(finalEntry, a)
+                        finalTicks = ticks(finalEntry, a, finalTickDegrees, finalTicks)
                     }
                     if (zone == Zone.BEYOND) finalHardened = true
                 }
                 Zone.VOWEL -> {
                     finalActive = false
-                    vowelTicks = ticks(vowelEntry, a)
+                    vowelTicks = ticks(vowelEntry, a, tickDegrees, vowelTicks)
                 }
                 Zone.DEEP, Zone.HUB -> {
                     finalActive = false
@@ -206,7 +208,7 @@ class DialRecognizer(
                         vowelEntry = a
                         vowelTicks = 0
                     } else {
-                        vowelTicks = ticks(vowelEntry, a)
+                        vowelTicks = ticks(vowelEntry, a, tickDegrees, vowelTicks)
                     }
                 }
             }
@@ -235,9 +237,14 @@ class DialRecognizer(
         return out
     }
 
-    /** Ticks turned clockwise on screen (toward the top end of the arc) since [entry]. */
-    private fun ticks(entry: Float, angle: Float): Int =
-        (Math.toDegrees((entry - angle).toDouble()) / tickDegrees).roundToInt()
+    /**
+     * Ticks turned clockwise on screen (toward the top end of the arc) since [entry], one tick per [stepDegrees].
+     * The count only changes once the thumb is clearly past the halfway point, so it does not flutter there.
+     */
+    private fun ticks(entry: Float, angle: Float, stepDegrees: Float, previous: Int): Int {
+        val exact = Math.toDegrees((entry - angle).toDouble()) / stepDegrees
+        return if (abs(exact - previous) < TICK_HYSTERESIS) previous else exact.roundToInt()
+    }
 
     /** The zone at radius [r], except that a ring edge only counts once crossed by more than [hysteresis]. */
     private fun stableZone(r: Float): Zone {
@@ -252,6 +259,11 @@ class DialRecognizer(
         if (abs(r - nearestEdge) < hysteresis) return last
         lastZone = zone
         return zone
+    }
+
+    private companion object {
+        /** In ticks: how far past the halfway point the thumb must turn before the count moves. */
+        const val TICK_HYSTERESIS = 0.65
     }
 
     private fun reset() {

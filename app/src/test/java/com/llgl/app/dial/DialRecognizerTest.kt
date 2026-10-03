@@ -211,6 +211,44 @@ class DialRecognizerTest {
     }
 
     @Test
+    fun `a tick only changes once the thumb is clearly past halfway, and stays until clearly back`() {
+        val rec = pulse()
+        val rVowel = ringMid(Ring.VOWEL)
+        val a = angleOf(Ring.OUTER, 16, 8)
+        val p = layout.toScreen(ringMid(Ring.OUTER), a)
+        rec.begin(p.x, p.y)
+        rec.glide(ringMid(Ring.OUTER), a, rVowel, a)
+        rec.glide(rVowel, a, rVowel, a - deg(0.55f * tick))
+        assertEquals(0, (rec.result() as DialRecognizer.Result.Syllable).vowelTicks)
+        rec.glide(rVowel, a - deg(0.55f * tick), rVowel, a - deg(0.75f * tick))
+        assertEquals(1, (rec.result() as DialRecognizer.Result.Syllable).vowelTicks)
+        rec.glide(rVowel, a - deg(0.75f * tick), rVowel, a - deg(0.45f * tick))
+        assertEquals(1, (rec.result() as DialRecognizer.Result.Syllable).vowelTicks)
+        rec.glide(rVowel, a - deg(0.45f * tick), rVowel, a - deg(0.25f * tick))
+        assertEquals(0, (rec.end() as DialRecognizer.Result.Syllable).vowelTicks)
+    }
+
+    @Test
+    fun `finals are counted in their own step, the outer ring's hole spacing`() {
+        val finalStep = 5f
+        val rec = DialRecognizer(
+            layout, pulseMode = true, outerCount = 16, tickDegrees = tick,
+            tapRadius = 12f * density, longDistance = 42f * density, finalTickDegrees = finalStep,
+        )
+        val rOuter = ringMid(Ring.OUTER)
+        val rVowel = ringMid(Ring.VOWEL)
+        val a = angleOf(Ring.OUTER, 16, 8)
+        val p = layout.toScreen(rOuter, a)
+        rec.begin(p.x, p.y)
+        rec.glide(rOuter, a, rVowel, a)
+        rec.glide(rVowel, a, rOuter, a)
+        rec.glide(rOuter, a, rOuter, a - deg(2 * finalStep))
+        val s = rec.end() as DialRecognizer.Result.Syllable
+        assertEquals(2, s.finalTicks)
+        assertEquals(0, s.vowelTicks)
+    }
+
+    @Test
     fun `fixed mode reads inner rings as items and a crossing as a push`() {
         val rec = fixed()
         val p = layout.itemCenter(Ring.VOWEL, 12, 5)
