@@ -60,6 +60,13 @@ jobs:
           path: vibe/build/outputs/apk/debug/vibe-debug.apk
           if-no-files-found: error
 
+      - name: Upload debug APK (sky turtles wallpaper)
+        uses: actions/upload-artifact@v4
+        with:
+          name: turtles-debug
+          path: turtles/build/outputs/apk/debug/turtles-debug.apk
+          if-no-files-found: error
+
       - name: Upload test and lint reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -70,4 +77,5 @@ jobs:
             sandbox/build/reports/
             gameforge/build/reports/
             vibe/build/reports/
+            turtles/build/reports/
           if-no-files-found: ignore

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">하늘 거북이</string>
+    <string name="wallpaper_description">거북이들이 하늘을 헤엄치듯 날아다닙니다. 시간에 따라 하늘빛이 바뀌고, 기울이면 살짝 흐르고, 톡 치면 한 바퀴 돕니다.</string>
+    <string name="wallpaper_unavailable">이 기기에서는 라이브 배경화면 선택 화면을 열 수 없어요.</string>
+</resources>

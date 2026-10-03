@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A sea turtle gliding to the right under three stars, inside the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- stars -->
+    <path
+        android:fillColor="#FFF4C2"
+        android:pathData="M30,30l1.2,2.8l2.8,1.2l-2.8,1.2l-1.2,2.8l-1.2,-2.8l-2.8,-1.2l2.8,-1.2zM76,24l1,2.3l2.3,1l-2.3,1l-1,2.3l-1,-2.3l-2.3,-1l2.3,-1zM66,38l0.8,1.8l1.8,0.8l-1.8,0.8l-0.8,1.8l-0.8,-1.8l-1.8,-0.8l1.8,-0.8z" />
+    <!-- back flippers -->
+    <path
+        android:fillColor="#6FB487"
+        android:pathData="M40,46c-6,-5 -11,-7 -15,-6c2,3 7,6 13,8zM40,66c-6,5 -11,7 -15,6c2,-3 7,-6 13,-8z" />
+    <!-- front flippers -->
+    <path
+        android:fillColor="#7FC08A"
+        android:pathData="M60,45c-2,-9 1,-16 7,-19c3,4 2,12 -2,19zM60,67c-2,9 1,16 7,19c3,-4 2,-12 -2,-19z" />
+    <!-- tail and head -->
+    <path
+        android:fillColor="#7FC08A"
+        android:pathData="M36,56l-9,-3v6zM80,56a7,5.5 0 1,0 -14,0a7,5.5 0 1,0 14,0z" />
+    <!-- shell -->
+    <path
+        android:fillColor="#2E7A55"
+        android:pathData="M74,56a22,16 0 1,0 -44,0a22,16 0 1,0 44,0z" />
+    <path
+        android:fillColor="#3C9D6E"
+        android:pathData="M71,56a19,13.5 0 1,0 -38,0a19,13.5 0 1,0 38,0z" />
+    <!-- scutes -->
+    <path
+        android:fillColor="#8CDBB0"
+        android:pathData="M58,56a6,4.5 0 1,0 -12,0a6,4.5 0 1,0 12,0zM45,49a3,2.5 0 1,0 -6,0a3,2.5 0 1,0 6,0zM45,63a3,2.5 0 1,0 -6,0a3,2.5 0 1,0 6,0zM65,49a3,2.5 0 1,0 -6,0a3,2.5 0 1,0 6,0zM65,63a3,2.5 0 1,0 -6,0a3,2.5 0 1,0 6,0z" />
+    <!-- eye -->
+    <path
+        android:fillColor="#1B2550"
+        android:pathData="M76.5,54.5a1.5,1.5 0 1,0 -3,0a1.5,1.5 0 1,0 3,0z" />
+</vector>
