@@ -53,6 +53,13 @@ jobs:
           path: gameforge/build/outputs/apk/debug/gameforge-debug.apk
           if-no-files-found: error
 
+      - name: Upload debug APK (vibration music)
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibe-debug
+          path: vibe/build/outputs/apk/debug/vibe-debug.apk
+          if-no-files-found: error
+
       - name: Upload test and lint reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -62,4 +69,5 @@ jobs:
             app/build/reports/
             sandbox/build/reports/
             gameforge/build/reports/
+            vibe/build/reports/
           if-no-files-found: ignore

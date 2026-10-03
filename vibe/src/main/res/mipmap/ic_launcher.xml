@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fallback launcher icon for API 24-25. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#1C1230"
+        android:pathData="M0,0h108v108h-108z" />
+    <path
+        android:fillColor="#F2EEFF"
+        android:pathData="M40,28h28a4,4 0 0 1 4,4v44a4,4 0 0 1 -4,4h-28a4,4 0 0 1 -4,-4v-44a4,4 0 0 1 4,-4z" />
+    <path
+        android:fillColor="#1C1230"
+        android:pathData="M40,34h28v36h-28z" />
+    <path
+        android:fillColor="#FF7AB6"
+        android:pathData="M43,52h3v4h-3zM47,46h3v16h-3zM51,40h3v28h-3zM55,44h3v20h-3zM59,49h3v10h-3zM63,51h3v6h-3z" />
+    <path
+        android:fillColor="#7AF0D8"
+        android:pathData="M28,40a18,18 0 0 0 0,28l-3,3a22,22 0 0 1 0,-34zM80,40a18,18 0 0 1 0,28l3,3a22,22 0 0 0 0,-34z" />
+</vector>
