@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">픽셀 샌드박스</string>
+    <string name="tool_eraser">지우개</string>
+    <string name="tool_spark">⚡ 번개</string>
+    <string name="tool_switch">스위치 토글</string>
+    <string name="tool_pause">⏸ 멈춤</string>
+    <string name="tool_play">▶ 재생</string>
+    <string name="tool_step">한 틱</string>
+    <string name="speed_1x">1×</string>
+    <string name="speed_2x">2×</string>
+    <string name="tool_clear">비우기</string>
+    <string name="brush_label">굵기 %1$d</string>
+</resources>

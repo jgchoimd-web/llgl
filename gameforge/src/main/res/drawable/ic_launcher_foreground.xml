@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A chunky game controller with a spark above it: the AI writes, the pad plays. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- controller body -->
+    <path
+        android:fillColor="#B9A3FF"
+        android:pathData="M30,52h48a10,10 0 0 1 10,10v12a10,10 0 0 1 -10,10h-6l-6,-8h-24l-6,8h-6a10,10 0 0 1 -10,-10v-12a10,10 0 0 1 10,-10z" />
+    <!-- d-pad -->
+    <path
+        android:fillColor="#1A1535"
+        android:pathData="M37,58h6v5h5v6h-5v5h-6v-5h-5v-6h5z" />
+    <!-- buttons -->
+    <path
+        android:fillColor="#6FE3C4"
+        android:pathData="M64,60m-3,0a3,3 0 1,0 6,0a3,3 0 1,0 -6,0" />
+    <path
+        android:fillColor="#FFC46B"
+        android:pathData="M72,66m-3,0a3,3 0 1,0 6,0a3,3 0 1,0 -6,0" />
+    <!-- spark -->
+    <path
+        android:fillColor="#FFE97A"
+        android:pathData="M56,24h7l-5,10h6l-12,14l3,-10h-5z" />
+</vector>
