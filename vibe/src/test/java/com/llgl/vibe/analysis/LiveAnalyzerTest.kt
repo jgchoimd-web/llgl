@@ -128,7 +128,25 @@ class LiveAnalyzerTest {
         assertTrue(mean(frames, 2000, 4900) { it.bass } < 0.1f)
         assertEquals(0, frames.drop(50).count { it.beat })
         val raw = run(x, suppress = false)
-        assertTrue(mean(raw, 2000, 4900) { it.loud } > 0.5f)
+        assertTrue(mean(raw, 2000, 4900) { it.loud } > 0.4f)
+    }
+
+    @Test
+    fun `levels follow how loud the sound really is`() {
+        fun voiceAt(amplitude: Float): Float {
+            val x = FloatArray(rate * 2)
+            tone(x, 1000f, 200, 2000, amplitude)
+            val frames = run(x, suppress = false)
+            return mean(frames, 1000, 1900) { it.voice }
+        }
+        val loud = voiceAt(0.3f)
+        val quieter = voiceAt(0.075f) // -12 dB
+        val faint = voiceAt(0.002f) // -57 dBFS: below what a motor could show
+        assertTrue("loud $loud", loud in 0.6f..0.9f)
+        assertTrue("quieter $quieter vs $loud", quieter > loud * 0.3f && quieter < loud * 0.6f)
+        assertEquals(0f, faint, 0f)
+        // Full scale is a loud mix, not a clipping sine.
+        assertEquals(1f, voiceAt(0.9f), 0f)
     }
 
     @Test

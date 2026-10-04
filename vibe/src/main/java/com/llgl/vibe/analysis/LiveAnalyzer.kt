@@ -3,6 +3,7 @@ package com.llgl.vibe.analysis
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.sqrt
 
 /**
@@ -11,16 +12,17 @@ import kotlin.math.sqrt
  * Each band's energy is measured above a noise floor that hugs the band's recent low points and
  * climbs slowly, so a sound that stays steady for more than a second (a hum, hiss, a fan, rumble,
  * a held drone) sinks into the floor and stops counting, while anything that comes and goes
- * (speech syllables, hits, notes) stays in the foreground. Levels are normalised against a
- * slowly decaying maximum instead of a percentile, and a beat is confirmed one block late (the
- * next block must not be higher), so each call returns the frame for the block before it.
+ * (speech syllables, hits, notes) stays in the foreground. Levels are absolute, on a perceptual
+ * curve of the real sound level, so the motor follows how loud the sound is instead of adapting
+ * to it. A beat is confirmed one block late (the next block must not be higher), so each call
+ * returns the frame for the block before it.
  */
 class LiveAnalyzer(val sampleRate: Int, val blockMs: Int = 20) {
     /**
-     * Foreground levels 0..1: [loud] of the whole signal (or of the speech band, whichever is
-     * higher), [bass] of the band below 150 Hz, [voice] of the 300–3000 Hz band where speech
-     * lives. [onset] is how much louder this block got, [beat] a confirmed onset peak, [pitch] in
-     * Hz or 0 when nothing tonal is there.
+     * Foreground levels 0..1 of full scale (see [level]): [loud] of the whole signal (or of the
+     * speech band, whichever is higher), [bass] of the band below 150 Hz, [voice] of the
+     * 300–3000 Hz band where speech lives. [onset] is how much louder this block got relative to
+     * recent onsets, [beat] a confirmed onset peak, [pitch] in Hz or 0 when nothing tonal is there.
      */
     data class Frame(val loud: Float, val bass: Float, val onset: Float, val beat: Boolean, val pitch: Float, val voice: Float = 0f)
 
@@ -111,13 +113,12 @@ class LiveAnalyzer(val sampleRate: Int, val blockMs: Int = 20) {
             // pauses and the gaps between hits pull it straight back down.
             floor[b] = max(FLOOR_MIN, if (block == 0) raw[b] else min(raw[b], floor[b] * FLOOR_RISE + FLOOR_LEAK * raw[b]))
             e[b] = if (suppressBackground) max(0f, raw[b] - margins[b] * floor[b]) else raw[b]
-            // Levels are relative to the recent raw maximum, so a small leftover above the floor
-            // never reads as loud.
+            // The recent raw maximum only scales the onset flux below; levels are absolute.
             refs[b] = max(raw[b], max(FLOOR, refs[b] * DECAY))
         }
-        val lvlAll = sqrt(e[0] / refs[0]).coerceIn(0f, 1f)
-        val bass = sqrt(e[1] / refs[1]).coerceIn(0f, 1f)
-        val voice = sqrt(e[2] / refs[2]).coerceIn(0f, 1f)
+        val lvlAll = level(e[0])
+        val bass = level(e[1])
+        val voice = level(e[2])
         val loud = max(lvlAll, voice)
 
         var flux = 0f
@@ -164,8 +165,22 @@ class LiveAnalyzer(val sampleRate: Int, val blockMs: Int = 20) {
         return done
     }
 
+    /**
+     * Vibration-side level 0..1 for a foreground energy (mean square of full-scale samples): the
+     * sound amplitude on a 0.6 power, roughly how loudness is perceived, so twice the amplitude
+     * feels about half again as strong. Full at RMS 0.35 (-9 dBFS, a loud mix), nothing below
+     * RMS 0.003 (-50 dBFS), where the motor could not be felt anyway.
+     */
+    private fun level(energy: Float): Float {
+        if (energy <= 0f) return 0f
+        val l = (sqrt(energy) / FULL_RMS).pow(0.6f)
+        return if (l < LEVEL_GATE) 0f else min(1f, l)
+    }
+
     private companion object {
-        /** Energy below which nothing is "loud": RMS 0.01, about -40 dBFS. */
+        const val FULL_RMS = 0.35f
+        const val LEVEL_GATE = 0.06f
+        /** Energy floor for the onset reference: RMS 0.01, about -40 dBFS. */
         const val FLOOR = 1e-4f
         const val DECAY = 0.9954f // halves in ~3 s of 20 ms blocks
         const val DECAY_FLUX = 0.993f // halves in ~2 s

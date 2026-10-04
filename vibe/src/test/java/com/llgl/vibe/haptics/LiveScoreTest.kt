@@ -10,10 +10,10 @@ class LiveScoreTest {
         LiveAnalyzer.Frame(loud, bass, onset, beat, pitch, voice)
 
     @Test
-    fun `a beat starts a decaying pulse in rhythm mode`() {
+    fun `a beat starts a decaying pulse in rhythm mode, as strong as the sound`() {
         val s = LiveScore().apply { mode = Mode.RHYTHM }
         assertEquals(0, s.amplitude(frame(), 20f))
-        val first = s.amplitude(frame(onset = 1f, beat = true), 20f)
+        val first = s.amplitude(frame(loud = 1f, onset = 1f, beat = true), 20f)
         assertEquals(255, first)
         val second = s.amplitude(frame(), 20f)
         assertTrue(second in 1 until first)
@@ -23,6 +23,12 @@ class LiveScoreTest {
             break
         }
         assertTrue(zeroAfter in 2..6)
+        // The same hit at half the level is about half as strong; a softer onset a little less.
+        val quiet = LiveScore().apply { mode = Mode.RHYTHM }
+        val half = quiet.amplitude(frame(loud = 0.5f, onset = 1f, beat = true), 20f)
+        assertTrue("$half", half in 120..135)
+        val soft = LiveScore().apply { mode = Mode.RHYTHM }
+        assertTrue(soft.amplitude(frame(loud = 0.5f, onset = 0.2f, beat = true), 20f) < half)
     }
 
     @Test
@@ -56,7 +62,7 @@ class LiveScoreTest {
     @Test
     fun `full mode is the loudest of rhythm, scaled bass and scaled voice, melody ticks with pitch`() {
         val s = LiveScore().apply { mode = Mode.FULL }
-        val beat = s.amplitude(frame(bass = 0.9f, onset = 1f, beat = true), 20f)
+        val beat = s.amplitude(frame(loud = 1f, bass = 0.9f, onset = 1f, beat = true), 20f)
         assertEquals(255, beat)
         val later = (0 until 8).map { s.amplitude(frame(bass = 0.9f), 20f) }.last()
         assertTrue("$later", later in 120..180)
@@ -65,7 +71,13 @@ class LiveScoreTest {
 
         val m = LiveScore().apply { mode = Mode.MELODY }
         var ticks = 0
-        repeat(50) { if (m.amplitude(frame(loud = 0.8f, pitch = 440f), 20f) > 0) ticks++ }
+        var peak = 0
+        repeat(50) {
+            val a = m.amplitude(frame(loud = 0.8f, pitch = 440f), 20f)
+            if (a > 0) ticks++
+            if (a > peak) peak = a
+        }
+        assertTrue("$peak", peak in 210..225) // 255 × 0.8^0.7
         // One second of frames ticks at the pulse rate for that pitch (about 11 Hz for 440 Hz).
         val expected = (Score.pulseRate(440f) * 50 * 0.02f).toInt()
         assertTrue("$ticks ticks, expected about $expected", ticks in expected - 1..expected + 1)

@@ -6,7 +6,10 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
-/** Turns frames that arrive one at a time into vibration strength: keeps the pulse, bass, voice and tick state between calls. */
+/**
+ * Turns frames that arrive one at a time into vibration strength, proportional to how loud the
+ * sound is; keeps the pulse, bass, voice and tick state between calls.
+ */
 class LiveScore {
     var mode: Mode = Mode.FULL
     var intensity: Float = 1f
@@ -24,7 +27,8 @@ class LiveScore {
         if (f.beat) {
             pulseLen = 2 + (f.onset.coerceIn(0f, 1f) * 4f).roundToInt()
             pulseLeft = pulseLen
-            pulsePeak = 120f + 135f * f.onset.coerceIn(0f, 1f)
+            // As strong as the sound is at the beat, a sharper hit a little stronger still.
+            pulsePeak = 255f * f.loud.coerceIn(0f, 1f) * (0.6f + 0.4f * f.onset.coerceIn(0f, 1f))
         }
         val rhythm = if (pulseLeft > 0) {
             val k = pulseLen - pulseLeft
@@ -50,7 +54,7 @@ class LiveScore {
             phase += Score.pulseRate(f.pitch) * hopMs / 1000f
             if (phase >= 1f) {
                 phase -= 1f
-                melody = 90f + 165f * f.loud.pow(0.7f)
+                melody = 255f * f.loud.pow(0.7f)
             } else {
                 melody = 0f
             }
