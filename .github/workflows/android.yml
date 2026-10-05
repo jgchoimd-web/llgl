@@ -67,6 +67,13 @@ jobs:
           path: turtles/build/outputs/apk/debug/turtles-debug.apk
           if-no-files-found: error
 
+      - name: Upload debug APK (XNL kernel wallpaper)
+        uses: actions/upload-artifact@v4
+        with:
+          name: xnl-debug
+          path: xnl/build/outputs/apk/debug/xnl-debug.apk
+          if-no-files-found: error
+
       - name: Upload test and lint reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -78,4 +85,5 @@ jobs:
             gameforge/build/reports/
             vibe/build/reports/
             turtles/build/reports/
+            xnl/build/reports/
           if-no-files-found: ignore
