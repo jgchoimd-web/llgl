@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" data-gameforge>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>__TITLE__</title>
+<style>
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0b0d12;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+canvas{display:block;position:fixed;left:0;top:0}
+#err{display:none;position:fixed;left:0;right:0;bottom:0;background:#8a1c1c;color:#fff;font:14px/1.45 sans-serif;padding:10px 14px;white-space:pre-wrap;z-index:9;max-height:40%;overflow:auto}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="err"></div>
+<script>
+// ===== gameforge engine v1 =====
+// Owns the canvas, the frame loop, touch input, the title / HUD / game-over screens and error
+// reporting. The game script after this one only defines CONFIG and the hook functions.
+var W = 0, H = 0;
+var ctx = null;
+var G = {
+  state: 'title', score: 0, best: 0, time: 0, overAt: 0, dpr: 1,
+  touch: { down: false, x: 0, y: 0, startX: 0, startY: 0 },
+  config: { title: '게임', hint: '', hud: true },
+  hooks: {}, error: null
+};
+var __gf = { canvas: null, last: 0, tapTime: 0, moved: false, booted: false, frames: 0 };
+
+function __gfNow() { return performance.now() / 1000; }
+function __gfNoop() {}
+
+// Errors the browser reports (a syntax error in the game script included) go on screen once.
+// The browser already logs them to the console, so we do not log them again.
+window.addEventListener('error', function (e) {
+  __gfShowError((e && e.message) || '알 수 없는 오류', e && e.lineno);
+});
+window.addEventListener('unhandledrejection', function (e) {
+  var r = e && e.reason;
+  var m = 'Promise: ' + ((r && r.message) || r);
+  try { console.error('[게임 오류] ' + m); } catch (_) {}
+  __gfShowError(m, 0);
+});
+
+function __gfShowError(message, line) {
+  if (G.error) return;
+  G.error = message;
+  var el = document.getElementById('err');
+  if (el) {
+    el.textContent = '코드 오류: ' + message + (line ? ' (줄 ' + line + ')' : '') +
+      '\n위 바의 오류 버튼으로 AI에게 고쳐 달라고 하거나 코드를 직접 고칠 수 있어요.';
+    el.style.display = 'block';
+  }
+}
+
+// Exceptions thrown inside a hook: the browser never sees them, so log once and show.
+function __gfCall(name, a, b, c, d) {
+  if (G.error) return;
+  var f = G.hooks[name];
+  if (!f) return;
+  try { f(a, b, c, d); } catch (e) {
+    var m = name + '(): ' + ((e && e.message) || e);
+    try { console.error('[게임 오류] ' + m); } catch (_) {}
+    __gfShowError(m, 0);
+  }
+}
+
+function __gameforgeBoot() {
+  if (__gf.booted) return;
+  __gf.booted = true;
+  var canvas = document.getElementById('game');
+  __gf.canvas = canvas;
+  ctx = canvas.getContext('2d');
+  var cfg = (typeof CONFIG !== 'undefined' && CONFIG && typeof CONFIG === 'object') ? CONFIG : {};
+  G.config = { title: String(cfg.title || '게임'), hint: String(cfg.hint || ''), hud: cfg.hud !== false };
+  try { document.title = G.config.title; } catch (_) {}
+  G.hooks = {
+    reset: typeof reset === 'function' ? reset : __gfNoop,
+    update: typeof update === 'function' ? update : __gfNoop,
+    draw: typeof draw === 'function' ? draw : __gfNoop,
+    onTap: typeof onTap === 'function' ? onTap : __gfNoop,
+    onDown: typeof onDown === 'function' ? onDown : __gfNoop,
+    onDrag: typeof onDrag === 'function' ? onDrag : __gfNoop,
+    onUp: typeof onUp === 'function' ? onUp : __gfNoop,
+    onSwipe: typeof onSwipe === 'function' ? onSwipe : __gfNoop
+  };
+  try { G.best = Number(localStorage.getItem('gameforge:best:' + G.config.title)) || 0; } catch (_) { G.best = 0; }
+  __gfResize();
+  window.addEventListener('resize', __gfResize);
+  canvas.addEventListener('pointerdown', __gfDown);
+  canvas.addEventListener('pointermove', __gfMove);
+  canvas.addEventListener('pointerup', __gfUp);
+  canvas.addEventListener('pointercancel', __gfUp);
+  canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  __gfCall('reset');
+  requestAnimationFrame(__gfFrame);
+}
+
+function __gfResize() {
+  var canvas = __gf.canvas;
+  W = window.innerWidth; H = window.innerHeight;
+  G.dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * G.dpr); canvas.height = Math.round(H * G.dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+}
+
+function __gfFrame(t) {
+  var now = t / 1000;
+  var dt = __gf.last ? Math.min(0.05, now - __gf.last) : 1 / 60;
+  __gf.last = now;
+  __gf.frames++;
+  if (G.state === 'play') { G.time += dt; __gfCall('update', dt); }
+  ctx.setTransform(G.dpr, 0, 0, G.dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0b0d12'; ctx.fillRect(0, 0, W, H);
+  ctx.save();
+  __gfCall('draw');
+  ctx.restore();
+  ctx.setTransform(G.dpr, 0, 0, G.dpr, 0, 0);
+  __gfOverlays();
+  requestAnimationFrame(__gfFrame);
+}
+
+function __gfDim() { ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, 0, W, H); }
+
+function __gfWrapText(str, x, y, size, color, maxWidth) {
+  ctx.font = 'bold ' + size + 'px sans-serif';
+  var words = String(str).split(' '), lines = [], cur = '';
+  for (var i = 0; i < words.length; i++) {
+    var test = cur ? cur + ' ' + words[i] : words[i];
+    if (ctx.measureText(test).width > maxWidth && cur) { lines.push(cur); cur = words[i]; } else { cur = test; }
+  }
+  if (cur) lines.push(cur);
+  for (var k = 0; k < lines.length; k++) text(lines[k], x, y + k * size * 1.4, size, color, 'center');
+}
+
+function __gfOverlays() {
+  if (G.config.hud && G.state !== 'title') {
+    text('점수 ' + G.score, 14, 26, 16, '#ffffff', 'left');
+    text('최고 ' + G.best, W - 14, 26, 16, '#9aa3b2', 'right');
+  }
+  if (G.state === 'title') {
+    __gfDim();
+    text(G.config.title, W / 2, H * 0.36, 34, '#ffffff');
+    if (G.config.hint) __gfWrapText(G.config.hint, W / 2, H * 0.46, 16, '#cfd6e4', W - 48);
+    if (Math.floor(__gfNow() * 2) % 2 === 0) text('탭하여 시작', W / 2, H * 0.6, 20, '#ffe97a');
+  } else if (G.state === 'over') {
+    __gfDim();
+    text('게임 오버', W / 2, H * 0.38, 34, '#ffffff');
+    text('점수 ' + G.score + '  ·  최고 ' + G.best, W / 2, H * 0.47, 18, '#cfd6e4');
+    if (__gfNow() - G.overAt > 0.6) text('탭하여 다시 하기', W / 2, H * 0.6, 20, '#ffe97a');
+  }
+}
+
+function __gfPos(e) {
+  var r = __gf.canvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+function __gfDown(e) {
+  e.preventDefault();
+  if (e.isPrimary === false) return;
+  try { __gf.canvas.setPointerCapture(e.pointerId); } catch (_) {}
+  var p = __gfPos(e), T = G.touch;
+  T.down = true; T.x = T.startX = p.x; T.y = T.startY = p.y;
+  __gf.tapTime = __gfNow(); __gf.moved = false;
+  if (G.state === 'play') __gfCall('onDown', p.x, p.y);
+}
+
+function __gfMove(e) {
+  if (!G.touch.down || e.isPrimary === false) return;
+  var p = __gfPos(e), T = G.touch;
+  var dx = p.x - T.x, dy = p.y - T.y;
+  T.x = p.x; T.y = p.y;
+  if (Math.abs(p.x - T.startX) > 10 || Math.abs(p.y - T.startY) > 10) __gf.moved = true;
+  if (G.state === 'play') __gfCall('onDrag', p.x, p.y, dx, dy);
+}
+
+function __gfUp(e) {
+  if (!G.touch.down || e.isPrimary === false) return;
+  var p = __gfPos(e), T = G.touch;
+  T.down = false; T.x = p.x; T.y = p.y;
+  var held = __gfNow() - __gf.tapTime;
+  var ddx = p.x - T.startX, ddy = p.y - T.startY;
+  if (G.state === 'title') { if (!G.error) __gfStart(); return; }
+  if (G.state === 'over') { if (__gfNow() - G.overAt > 0.6) __gfStart(); return; }
+  __gfCall('onUp', p.x, p.y);
+  if (!__gf.moved && held < 0.35) { __gfCall('onTap', p.x, p.y); return; }
+  if (Math.hypot(ddx, ddy) > 40 && held < 0.6) {
+    __gfCall('onSwipe', Math.abs(ddx) > Math.abs(ddy) ? (ddx > 0 ? 'right' : 'left') : (ddy > 0 ? 'down' : 'up'));
+  }
+}
+
+function __gfStart() {
+  G.score = 0; G.time = 0; G.state = 'play';
+  __gfCall('reset');
+}
+
+// ----- the API games use -----
+function gameOver() {
+  if (G.state !== 'play') return;
+  G.state = 'over'; G.overAt = __gfNow();
+  if (G.score > G.best) {
+    G.best = G.score;
+    try { localStorage.setItem('gameforge:best:' + G.config.title, String(G.best)); } catch (_) {}
+  }
+  vibrate(80);
+}
+function addScore(n) { G.score += (n === undefined ? 1 : n); }
+function setScore(n) { G.score = n; }
+function vibrate(ms) { try { if (navigator.vibrate) navigator.vibrate(ms || 30); } catch (_) {} }
+function rand(a, b) { if (a === undefined) { a = 0; b = 1; } else if (b === undefined) { b = a; a = 0; } return a + Math.random() * (b - a); }
+function randInt(a, b) { if (b === undefined) { b = a; a = 0; } return Math.floor(a + Math.random() * (b - a + 1)); }
+function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+function hitCircle(a, b) { return dist(a.x, a.y, b.x, b.y) < (a.r || 0) + (b.r || 0); }
+function hitRect(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
+function circle(x, y, r, color) { ctx.fillStyle = color || '#fff'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+function rect(x, y, w, h, color) { ctx.fillStyle = color || '#fff'; ctx.fillRect(x, y, w, h); }
+function line(x1, y1, x2, y2, color, width) { ctx.strokeStyle = color || '#fff'; ctx.lineWidth = width || 2; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+function text(str, x, y, size, color, align) { ctx.fillStyle = color || '#fff'; ctx.font = 'bold ' + (size || 16) + 'px sans-serif'; ctx.textAlign = align || 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(str), x, y); }
+</script>
+<script>
+/*__GAME__*/
+</script>
+<script>__gameforgeBoot();</script>
+</body>
+</html>

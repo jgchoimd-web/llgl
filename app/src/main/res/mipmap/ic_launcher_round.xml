@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fallback round launcher icon for API 25: the glass box on a dark disc. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#14100E"
+        android:pathData="M54,54m-54,0a54,54 0 1,0 108,0a54,54 0 1,0 -108,0" />
+    <path
+        android:fillColor="#3B2A1E"
+        android:pathData="M30,30h48v48h-48z" />
+    <path
+        android:fillColor="#D9C08A"
+        android:pathData="M33,58h18v17h-18z" />
+    <path
+        android:fillColor="#3B8BD6"
+        android:pathData="M55,36h18v12h-18z" />
+    <path
+        android:fillColor="#3F7A3A"
+        android:pathData="M34,34h12v12h-12z" />
+    <path
+        android:fillColor="#4B8E3E"
+        android:pathData="M57,66h3v9h-3zM51,69h6v3h-6zM60,69h6v3h-6zM54,63h3v3h-3zM60,63h3v3h-3z" />
+    <path
+        android:fillColor="#8F8A82"
+        android:pathData="M66,54h6v6h-6z" />
+    <path
+        android:fillColor="#6B6F75"
+        android:pathData="M48,50h9v5h-9z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#9FD3C7"
+        android:strokeWidth="3"
+        android:pathData="M30,30h48v48h-48z" />
+</vector>
