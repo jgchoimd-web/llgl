@@ -74,6 +74,13 @@ jobs:
           path: xnl/build/outputs/apk/debug/xnl-debug.apk
           if-no-files-found: error
 
+      - name: Upload debug APK (tube wallpaper)
+        uses: actions/upload-artifact@v4
+        with:
+          name: tube-debug
+          path: tube/build/outputs/apk/debug/tube-debug.apk
+          if-no-files-found: error
+
       - name: Upload test and lint reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -86,4 +93,5 @@ jobs:
             vibe/build/reports/
             turtles/build/reports/
             xnl/build/reports/
+            tube/build/reports/
           if-no-files-found: ignore

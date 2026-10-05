@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">튜브 배경화면</string>
+    <string name="wallpaper_description">유튜브 채널의 영상이 배경화면으로 재생됩니다. 공식 임베드 플레이어를 쓰고, 배경화면이 보일 때만 재생합니다.</string>
+    <string name="wallpaper_unavailable">이 기기에서는 라이브 배경화면 선택 화면을 열 수 없어요.</string>
+</resources>
