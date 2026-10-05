@@ -10,8 +10,10 @@ import com.llgl.xnl.info.DeviceInfo
 import com.llgl.xnl.render.TerminalRenderer
 import com.llgl.xnl.shell.ShellRunner
 import com.llgl.xnl.term.Command
+import com.llgl.xnl.term.CommandRouter
 import com.llgl.xnl.term.CommandResult
 import com.llgl.xnl.term.Commands
+import com.llgl.xnl.term.Route
 import com.llgl.xnl.term.Format
 import com.llgl.xnl.term.Playbook
 import com.llgl.xnl.term.Rng
@@ -130,7 +132,11 @@ class TermSession(context: Context, private val prefs: Prefs) : SharedPreference
     private fun dispatch(command: Command, gen: Int) {
         worker.execute {
             val result = try {
-                if (command.builtin) info.run(command.text) else shell.run(command.text)
+                when (val route = CommandRouter.route(command)) {
+                    is Route.Shell -> shell.run(route.line)
+                    is Route.Device -> info.run(route.command)
+                    is Route.Canned -> CommandResult(route.lines, true)
+                }
             } catch (e: Exception) {
                 CommandResult(listOf("${command.text}: ${e.javaClass.simpleName}: ${e.message}"), false)
             }

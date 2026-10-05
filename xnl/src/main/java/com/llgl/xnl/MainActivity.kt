@@ -114,7 +114,7 @@ private fun SetupScreen(prefs: Prefs, onSetWallpaper: () -> Unit) {
                     .clip(RoundedCornerShape(24.dp)),
             )
             Text(
-                "터미널 하나가 쭉 내려갑니다. 보이는 것은 전부 이 폰의 진짜 것입니다: 명령은 폰의 sh(/system/bin/sh)에서 실제로 실행되고 출력은 그대로 찍힙니다(uname, uptime, free, df, /proc, getprop, ps …). xnl로 시작하는 명령은 앱이 Android API로 읽은 값(배터리·메모리·디스플레이·센서·카메라·네트워크 …)을 보여 줍니다. 꾸며 낸 줄은 없습니다. 톡 치면 다음 명령이 바로 실행됩니다.",
+                "터미널 하나가 쭉 내려갑니다. 명령은 폰의 sh(/system/bin/sh)에서 실제로 실행되어 그 출력이 그대로 나옵니다(uname, uptime, free, df, /proc, ps, ls, getprop …). 리눅스 워크스테이션 느낌을 내려고 폰에 없는 고전 명령(git, make, apt, docker, neofetch, cowsay …)은 그럴듯한 출력으로 흉내 냅니다. 그리고 가끔 중간에 이스터에그가 숨어 있습니다 — 전부 보여 주기만 할 뿐 아무것도 실행되지 않습니다. 톡 치면 다음 명령이 바로 실행됩니다.",
                 style = MaterialTheme.typography.bodyMedium,
             )
             Button(
@@ -192,9 +192,9 @@ private fun SetupScreen(prefs: Prefs, onSetWallpaper: () -> Unit) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("도는 명령", style = MaterialTheme.typography.titleSmall)
-                    Text("셸 ${Commands.SHELL.size}개 · xnl ${Commands.BUILTIN.size}개. 자주 바뀌는 값(uptime, 배터리, 부하, 클럭)은 자주, 안 바뀌는 값(커널, CPU, 빌드)은 가끔.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("실제 셸 ${Commands.SHELL.size}개 · 흉내 낸 세션 ${Commands.SESSION.size}개 · 이스터에그 ${Commands.EGGS.size}개는 중간에 몰래 나옵니다(목록엔 안 둠).", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        (Commands.SHELL + Commands.BUILTIN).joinToString("\n") { "$ " + it.text },
+                        (Commands.SHELL + Commands.SESSION).joinToString("\n") { "$ " + it.text },
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = FontFamily.Monospace,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

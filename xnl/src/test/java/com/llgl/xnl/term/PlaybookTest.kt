@@ -14,7 +14,7 @@ class PlaybookTest {
     fun `the session opens in order, then nothing follows itself`() {
         val pb = Playbook(Rng(3), Commands.list(shell = true))
         assertEquals("uname -a", pb.next(0f)!!.text)
-        assertEquals("xnl device", pb.next(1f)!!.text)
+        assertEquals("neofetch", pb.next(1f)!!.text)
         assertEquals("uptime", pb.next(2f)!!.text)
         var last = "uptime"
         for (i in 0 until 300) {
@@ -55,6 +55,6 @@ class PlaybookTest {
         val help = Commands.HELP.map { it.first }.toSet()
         for (c in Commands.BUILTIN) assertTrue(c.text, c.text in help)
         assertNotNull(Commands.list(shell = false).firstOrNull { it.text == "xnl battery" })
-        assertTrue(Commands.list(shell = false).none { !it.builtin })
+        assertTrue(Commands.list(shell = false).none { CommandRouter.route(it) is Route.Shell })
     }
 }
