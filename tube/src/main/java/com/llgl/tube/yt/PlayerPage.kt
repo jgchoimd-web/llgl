@@ -2,11 +2,16 @@ package com.llgl.tube.yt
 
 /**
  * The page the WebView loads: YouTube's official IFrame player, playing a channel's uploads playlist
- * shuffled, scaled to cover or fit the screen, with a small bridge back to Kotlin. Loaded with
- * youtube.com as the base URL so the embed's origin checks pass.
+ * shuffled, scaled to cover or fit the screen, with a small bridge back to Kotlin.
+ *
+ * The page is loaded with [BASE_URL] as its address, so the embed sees a plain https origin of this
+ * app's own as the referrer. It must not pretend to be youtube.com: since 2025 the embed answers that
+ * with error 152 ("This video is unavailable"), which is exactly what a youtube.com base URL produced
+ * on a phone and in a headless Chromium probe, while an app origin loaded the playlist fine.
  */
 object PlayerPage {
-    const val ORIGIN = "https://www.youtube.com"
+    const val ORIGIN = "https://tube.llgl.app"
+    const val BASE_URL = "$ORIGIN/player.html"
     const val FIT_COVER = "cover"
     const val FIT_CONTAIN = "contain"
 
@@ -37,7 +42,7 @@ function layout(){
 function tell(n,a){ try{ if(window.Bridge&&Bridge[n]) Bridge[n](a===undefined?'':String(a)); }catch(e){} }
 function onYouTubeIframeAPIReady(){
   player=new YT.Player('player',{width:'100%',height:'100%',
-    playerVars:{autoplay:1,controls:0,rel:0,playsinline:1,modestbranding:1,iv_load_policy:3,fs:0,disablekb:1,listType:'playlist',list:list,loop:1,origin:'https://www.youtube.com'},
+    playerVars:{autoplay:1,controls:0,rel:0,playsinline:1,modestbranding:1,iv_load_policy:3,fs:0,disablekb:1,listType:'playlist',list:list,loop:1,origin:location.origin},
     events:{
       onReady:function(){ ready=true; layout(); if(muted)player.mute(); else player.unMute(); try{player.setShuffle(true);player.setLoop(true);}catch(e){} if(wanted)player.playVideo(); else player.pauseVideo(); tell('onReady'); },
       onStateChange:function(e){ tell('onState',e.data); if(e.data===1){ try{ tell('onTitle', player.getVideoData().title||''); }catch(x){} } },

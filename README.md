@@ -253,7 +253,7 @@ CI 아티팩트 `tube-debug`, 로컬 빌드는 `./gradlew :tube:assembleDebug`.
 ## 동작 원리
 
 - WebView는 배경화면 표면에 직접 그릴 수 없습니다. 그래서 `TubeWallpaper.kt`는 **배경화면 Surface를 출력으로 하는 전용 가상 디스플레이**(`DisplayManager.createVirtualDisplay`, `FLAG_PRESENTATION | FLAG_OWN_CONTENT_ONLY`)를 만들고 그 위에 `PlayerPresentation`(`Presentation` 창)을 띄웁니다. 그 창에 그려지는 것이 영상까지 그대로 배경화면으로 합성됩니다. 표면 크기가 바뀌면 다시 만들고, 표면이 사라지면 창과 디스플레이를 해제합니다.
-- `PlayerView.kt` — IFrame 플레이어 페이지를 `loadDataWithBaseURL("https://www.youtube.com", …)`로 띄우는 WebView(JS·DOM storage, 제스처 없는 자동 재생). JS → Kotlin 브리지로 준비·상태·제목·오류를 받고, Kotlin → JS로 재생·멈춤·다음·음소거·맞춤을 보냅니다. 앱의 미리보기도 같은 뷰입니다.
+- `PlayerView.kt` — IFrame 플레이어 페이지를 앱 전용 https 출처(`https://tube.llgl.app/player.html`)를 주소로 띄우는 WebView(JS·DOM storage, 제스처 없는 자동 재생). 예전처럼 youtube.com을 출처로 가장하면 2025년부터 임베드가 **오류 152("This video is unavailable")**로 거부합니다 — 폰과 헤드리스 Chromium 탐침에서 똑같이 재현됐고, 앱 출처로 바꾸니 재생목록이 로드됐습니다. JS → Kotlin 브리지로 준비·상태·제목·오류를 받고, Kotlin → JS로 재생·멈춤·다음·음소거·맞춤을 보냅니다. 앱의 미리보기도 같은 뷰입니다.
 - `yt/PlayerPage.kt`(순수 Kotlin) — 플레이어 HTML: `listType=playlist`·`list=UU…`, 셔플·루프, 꽉 채우기/맞춤 레이아웃, 오류 때 1.5초 뒤 다음 영상.
 - `yt/Channel.kt`(순수 Kotlin) — 입력 해석(핸들·ID·`channel/`·`c/`·`user/`·`m.` 주소), 업로드 재생목록 ID(`UC`→`UU`), 채널 페이지에서 `externalId`/`channelId` 추출, RSS 피드에서 제목 추출. `ChannelResolver.kt`가 이를 `HttpURLConnection`으로 잇습니다.
 - `PlayerPresentation.kt` — 보일 때만 재생(`onVisibilityChanged`), Wi-Fi가 아니면 안내만, 재생 상태·제목·오류를 `Prefs`에 적어 앱의 상태 카드에 보입니다.

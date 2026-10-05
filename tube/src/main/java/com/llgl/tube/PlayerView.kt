@@ -36,7 +36,7 @@ class PlayerView(context: Context, private val listener: Listener) : WebView(con
     }
 
     fun load(listId: String, fit: String, muted: Boolean) {
-        loadDataWithBaseURL(PlayerPage.ORIGIN, PlayerPage.html(listId, fit, muted), "text/html", "utf-8", null)
+        loadDataWithBaseURL(PlayerPage.BASE_URL, PlayerPage.html(listId, fit, muted), "text/html", "utf-8", null)
     }
 
     fun play() = js("play()")
