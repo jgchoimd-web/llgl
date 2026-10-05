@@ -10,23 +10,46 @@ class Prefs(context: Context) {
 
     /** Index into the renderer's accent palette. */
     var accent: Int
-        get() = p.getInt("accent", 0).coerceIn(0, 4)
-        set(value) = p.edit { putInt("accent", value.coerceIn(0, 4)) }
+        get() = p.getInt(KEY_ACCENT, 0).coerceIn(0, 4)
+        set(value) = p.edit { putInt(KEY_ACCENT, value.coerceIn(0, 4)) }
 
-    /** The provisional wordmark; off hides the slot until a real logo exists. */
-    var wordmark: Boolean
-        get() = p.getBoolean("wordmark", true)
-        set(value) = p.edit { putBoolean("wordmark", value) }
+    /** How many characters fit across the screen; the font follows. */
+    var columns: Int
+        get() = p.getInt(KEY_COLUMNS, 56).coerceIn(MIN_COLUMNS, MAX_COLUMNS)
+        set(value) = p.edit { putInt(KEY_COLUMNS, value.coerceIn(MIN_COLUMNS, MAX_COLUMNS)) }
 
-    var logSpeed: Float
-        get() = p.getFloat("log_speed", 1f).coerceIn(0.3f, 3f)
-        set(value) = p.edit { putFloat("log_speed", value.coerceIn(0.3f, 3f)) }
+    /** Typing, printing and pauses, scaled. */
+    var speed: Float
+        get() = p.getFloat(KEY_SPEED, 1f).coerceIn(0.5f, 3f)
+        set(value) = p.edit { putFloat(KEY_SPEED, value.coerceIn(0.5f, 3f)) }
 
-    var tilt: Boolean
-        get() = p.getBoolean("tilt", true)
-        set(value) = p.edit { putBoolean("tilt", value) }
+    /** Run real shell commands in /system/bin/sh; off keeps only the `xnl` built-ins. */
+    var shell: Boolean
+        get() = p.getBoolean(KEY_SHELL, true)
+        set(value) = p.edit { putBoolean(KEY_SHELL, value) }
+
+    /** Commands that failed on this phone once and are never offered again. */
+    val broken: Set<String>
+        get() = p.getStringSet(KEY_BROKEN, null)?.let { HashSet(it) } ?: emptySet()
+
+    fun markBroken(text: String) {
+        val set = HashSet(broken)
+        if (set.add(text)) p.edit { putStringSet(KEY_BROKEN, set) }
+    }
+
+    fun resetBroken() = p.edit { remove(KEY_BROKEN) }
 
     fun register(listener: SharedPreferences.OnSharedPreferenceChangeListener) = p.registerOnSharedPreferenceChangeListener(listener)
 
     fun unregister(listener: SharedPreferences.OnSharedPreferenceChangeListener) = p.unregisterOnSharedPreferenceChangeListener(listener)
+
+    companion object {
+        const val KEY_ACCENT = "accent"
+        const val KEY_COLUMNS = "columns"
+        const val KEY_SPEED = "speed"
+        const val KEY_SHELL = "shell"
+        const val KEY_BROKEN = "broken"
+        const val MIN_COLUMNS = 40
+        const val MAX_COLUMNS = 80
+    }
 }

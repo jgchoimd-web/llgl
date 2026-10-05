@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">XNL 배경화면</string>
-    <string name="wallpaper_description">XNL 커널의 안쪽: 부팅 로그가 흐르고, 코어가 숨 쉬고, 메모리 페이지가 켜졌다 꺼지고, 인터럽트가 달립니다. 업타임·메모리·배터리는 진짜 값입니다.</string>
+    <string name="wallpaper_description">XNL 터미널 — 이 폰의 실제 명령과 실제 출력이 쭉 흐릅니다. 커널·업타임·메모리·배터리·CPU 전부 진짜 값입니다.</string>
     <string name="wallpaper_unavailable">이 기기에서는 라이브 배경화면 선택 화면을 열 수 없어요.</string>
 </resources>

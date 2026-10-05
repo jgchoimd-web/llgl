@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -30,6 +31,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -46,8 +48,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.llgl.xnl.term.Commands
 import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
@@ -86,10 +90,11 @@ private val ACCENT_NAMES = listOf("시안", "앰버", "그린", "마젠타", "�
 @Composable
 private fun SetupScreen(prefs: Prefs, onSetWallpaper: () -> Unit) {
     var accent by remember { mutableIntStateOf(prefs.accent) }
-    var wordmark by remember { mutableStateOf(prefs.wordmark) }
-    var logSpeed by remember { mutableFloatStateOf(prefs.logSpeed) }
-    var tilt by remember { mutableStateOf(prefs.tilt) }
+    var columns by remember { mutableIntStateOf(prefs.columns) }
+    var speed by remember { mutableFloatStateOf(prefs.speed) }
+    var shell by remember { mutableStateOf(prefs.shell) }
     var lockPreview by remember { mutableStateOf(true) }
+    var broken by remember { mutableIntStateOf(prefs.broken.size) }
 
     Scaffold(topBar = { TopAppBar(title = { Text("XNL 배경화면") }) }) { padding ->
         Column(
@@ -101,15 +106,15 @@ private fun SetupScreen(prefs: Prefs, onSetWallpaper: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             AndroidView(
-                factory = { KernelView(it) },
-                update = { it.configure(accent, wordmark, logSpeed, tilt, lockPreview) },
+                factory = { TerminalView(it) },
+                update = { it.configure(lockPreview) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(9f / 16f)
                     .clip(RoundedCornerShape(24.dp)),
             )
             Text(
-                "XNL 커널의 안쪽을 배경으로 둡니다. 부팅 로그가 흐르고, 코어 부하가 숨 쉬고, 메모리 페이지가 켜졌다 꺼지고, 인터럽트가 코어로 달립니다. 아래 상태 줄의 업타임·메모리·배터리·호스트 커널은 이 폰의 진짜 값입니다. 톡 치면 그 자리에서 인터럽트가 일어나고, 코어 타일을 치면 그 코어가 올라갑니다.",
+                "터미널 하나가 쭉 내려갑니다. 보이는 것은 전부 이 폰의 진짜 것입니다: 명령은 폰의 sh(/system/bin/sh)에서 실제로 실행되고 출력은 그대로 찍힙니다(uname, uptime, free, df, /proc, getprop, ps …). xnl로 시작하는 명령은 앱이 Android API로 읽은 값(배터리·메모리·디스플레이·센서·카메라·네트워크 …)을 보여 줍니다. 꾸며 낸 줄은 없습니다. 톡 치면 다음 명령이 바로 실행됩니다.",
                 style = MaterialTheme.typography.bodyMedium,
             )
             Button(
@@ -119,18 +124,18 @@ private fun SetupScreen(prefs: Prefs, onSetWallpaper: () -> Unit) {
                     .height(56.dp),
             ) { Text("배경화면으로 설정", style = MaterialTheme.typography.titleMedium) }
             Text(
-                "Android 14 이상이면 미리보기의 ‘배경화면 설정’에서 잠금화면을 고를 수 있습니다. 잠금화면에 놓이면 코어·워드마크가 시계 아래로 내려갑니다.",
+                "Android 14 이상이면 미리보기의 ‘배경화면 설정’에서 잠금화면을 고를 수 있습니다. 잠금화면에 놓이면 시계 자리의 오래된 줄이 흐려집니다.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("강조색 · ${ACCENT_NAMES[accent]}", style = MaterialTheme.typography.titleSmall)
+                    Text("글자색 · ${ACCENT_NAMES[accent]}", style = MaterialTheme.typography.titleSmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         for ((i, c) in ACCENT_COLORS.withIndex()) {
                             val selected = i == accent
-                            androidx.compose.foundation.layout.Box(
+                            Box(
                                 modifier = Modifier
                                     .size(36.dp)
                                     .clip(CircleShape)
@@ -143,34 +148,57 @@ private fun SetupScreen(prefs: Prefs, onSetWallpaper: () -> Unit) {
                             )
                         }
                     }
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("임시 워드마크", style = MaterialTheme.typography.bodyMedium)
-                            Text("로고가 아직 없어 막대로 짠 XNL 글자를 둡니다. 로고가 정해지면 이 자리에 넣습니다.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(checked = wordmark, onCheckedChange = { wordmark = it; prefs.wordmark = it })
-                    }
-                    Text("로그 속도 ${(logSpeed * 100).roundToInt()}%", style = MaterialTheme.typography.titleSmall)
+                    Text("글자 크기 · 가로 ${columns}칸", style = MaterialTheme.typography.titleSmall)
                     Slider(
-                        value = logSpeed,
-                        onValueChange = { logSpeed = it },
-                        onValueChangeFinished = { prefs.logSpeed = logSpeed },
-                        valueRange = 0.3f..3f,
+                        value = columns.toFloat(),
+                        onValueChange = { columns = it.roundToInt() },
+                        onValueChangeFinished = { prefs.columns = columns },
+                        valueRange = Prefs.MIN_COLUMNS.toFloat()..Prefs.MAX_COLUMNS.toFloat(),
+                        steps = Prefs.MAX_COLUMNS - Prefs.MIN_COLUMNS - 1,
+                    )
+                    Text("속도 ${(speed * 100).roundToInt()}%", style = MaterialTheme.typography.titleSmall)
+                    Slider(
+                        value = speed,
+                        onValueChange = { speed = it },
+                        onValueChangeFinished = { prefs.speed = speed },
+                        valueRange = 0.5f..3f,
                     )
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("기울임 시차", style = MaterialTheme.typography.bodyMedium)
-                            Text("폰을 기울이면 페이지 맵이 살짝 흐릅니다.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("셸 명령 실행", style = MaterialTheme.typography.bodyMedium)
+                            Text("폰의 sh로 uname·uptime·free·df 같은 실제 명령을 돌려 그 출력을 그대로 보여 줍니다. 끄면 앱 API로 읽는 xnl 명령만 돕니다.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Switch(checked = tilt, onCheckedChange = { tilt = it; prefs.tilt = it })
+                        Switch(checked = shell, onCheckedChange = { shell = it; prefs.shell = it })
                     }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("잠금화면처럼 미리보기", style = MaterialTheme.typography.bodyMedium)
-                            Text("시계 자리(위쪽 40%)를 비워 둔 모습을 봅니다.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("시계 자리(위쪽 40%)의 줄이 흐려진 모습을 봅니다.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(checked = lockPreview, onCheckedChange = { lockPreview = it })
                     }
+                    if (broken > 0) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("이 폰에서 실패해 뺀 명령 ${broken}개", style = MaterialTheme.typography.bodyMedium)
+                                Text("권한이 없거나 파일이 없어 한 번 실패한 명령은 다시 띄우지 않습니다.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            OutlinedButton(onClick = { prefs.resetBroken(); broken = 0 }) { Text("다시 시도") }
+                        }
+                    }
+                }
+            }
+
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("도는 명령", style = MaterialTheme.typography.titleSmall)
+                    Text("셸 ${Commands.SHELL.size}개 · xnl ${Commands.BUILTIN.size}개. 자주 바뀌는 값(uptime, 배터리, 부하, 클럭)은 자주, 안 바뀌는 값(커널, CPU, 빌드)은 가끔.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        (Commands.SHELL + Commands.BUILTIN).joinToString("\n") { "$ " + it.text },
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }

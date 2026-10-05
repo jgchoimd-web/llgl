@@ -4,9 +4,6 @@
     <uses-feature
         android:name="android.software.live_wallpaper"
         android:required="false" />
-    <uses-feature
-        android:name="android.hardware.sensor.accelerometer"
-        android:required="false" />
 
     <application
         android:allowBackup="true"
@@ -27,7 +24,7 @@
             </intent-filter>
         </activity>
 
-        <!-- The kernel space itself. Keeps the dense parts below the clock when it knows it is on the lock screen. -->
+        <!-- The terminal itself. Fades the rows under the clock when it knows it is on the lock screen. -->
         <service
             android:name=".XnlWallpaper"
             android:label="@string/app_name"

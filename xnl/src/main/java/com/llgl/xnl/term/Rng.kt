@@ -1,6 +1,6 @@
-package com.llgl.xnl.kernel
+package com.llgl.xnl.term
 
-/** A small seeded xorshift, so a scene is reproducible in tests. */
+/** A small seeded xorshift, so a session is reproducible in tests. */
 class Rng(seed: Int) {
     private var s = if (seed == 0) 0x3779B97F else seed
 
